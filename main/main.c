@@ -107,6 +107,13 @@ void main_task(void *pvParameter)
 				while(1) vTaskDelay(1000 / portTICK_RATE_MS);
 			}
 			printf("Socket allocated, id=%d\n", s);
+
+			struct timeval timeout = {
+				.tv_sec = 1,
+				.tv_usec = 1000000,
+				};
+
+			lwip_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 			
 			// connect to the specified server
 			int con_result = connect(s, res->ai_addr, res->ai_addrlen);
