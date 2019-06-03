@@ -18,6 +18,8 @@
 // UART driver
 #include "driver/uart.h"
 
+// Queues
+QueueHandle_t queue_echo_to_wifi;
 
 // Event group
 static EventGroupHandle_t wifi_event_group;
@@ -88,17 +90,18 @@ void main_task(void *pvParameter)
 	}
 	printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
 	
-	char* uart_rcv_buffer = (char*) malloc(1);
+	uint8_t queue_rcv_value;
 	char request_buffer[strlen(REQUEST)];
+	BaseType_t xStatus;
 
 	while (1)
 	{
-		// Read data from the UART
-		int rcv_len = uart_read_bytes(UART_NUM_0, (uint8_t*)uart_rcv_buffer, 1, 20 / portTICK_RATE_MS);
-		if (rcv_len > 0)
+		// Read data from the queue
+		xStatus = xQueueReceive( queue_echo_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
+		if (xStatus == pdPASS)
 		{
-			printf("\n\nReceived from UART: %d\n\n", *uart_rcv_buffer);
-			sprintf(request_buffer, REQUEST, *uart_rcv_buffer);
+			printf("\nReceived from ECHO TASK: %d\n", queue_rcv_value);
+			sprintf(request_buffer, REQUEST, queue_rcv_value);
 
 			// create a new socket
 			int s = socket(res->ai_family, res->ai_socktype, 0);
@@ -150,13 +153,37 @@ void main_task(void *pvParameter)
 		}   // if (rcv_len > 0)
 		else 
 		{
-			printf("Nothing received.\n");
+			printf("Nothing received from ECHO Task.\n");
 		}
 
 		vTaskDelay(1000 / portTICK_RATE_MS);
 	}   // while(1)
 }
 
+
+void echo_task(void *pvParameter)
+{	
+	uint8_t* uart_rcv_buffer = (uint8_t*) malloc(1);
+	int rcv_len;
+	BaseType_t xStatus;
+
+	while (1)
+	{
+		// read data from the UART
+		rcv_len = uart_read_bytes(UART_NUM_0, (uint8_t*)uart_rcv_buffer, 1, 20 / portTICK_RATE_MS);
+		if (rcv_len > 0)
+		{
+			printf("\nReceived from UART: %d (Echo Task)\n", *uart_rcv_buffer);
+			// send the received value to the queue (wait 0ms if the queue is empty)
+			xStatus = xQueueSendToBack( queue_echo_to_wifi, uart_rcv_buffer, 0 );
+			if (xStatus != pdPASS)
+			{
+				printf("Could not send the data to the queue.\n");
+			}
+		}
+		vTaskDelay(100 / portTICK_RATE_MS);
+	}
+}
 
 // Main application
 void app_main()
@@ -205,6 +232,16 @@ void app_main()
     uart_set_pin(UART_NUM_0, 1, 3, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     uart_driver_install(UART_NUM_0, 1024, 0, 0, NULL, 0);
 
+    // create a queue capable of containing 5 char values
+    queue_echo_to_wifi = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_echo_to_wifi == NULL)
+    {
+    	printf("Could not create QUEUE.\n");
+    }
+
 	// start the main task
 	xTaskCreate(&main_task, "main_task", 2048, NULL, 5, NULL);
+
+	// start echo task with priority lower than wifi task
+	xTaskCreate(&echo_task, "echo_task", 2048, NULL, 4, NULL);
 }
