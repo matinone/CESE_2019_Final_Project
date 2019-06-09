@@ -1,3 +1,5 @@
+#include "wifi.h"
+
 #include <stdio.h>
 #include <string.h>
 
