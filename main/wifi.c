@@ -12,7 +12,6 @@
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
 
-// #include "main.c"
 extern QueueHandle_t queue_echo_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
 
