@@ -1,15 +1,10 @@
-#include <stdio.h>
-#include <string.h>
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 
 #include "esp_log.h"
 #include "nvs_flash.h"
-
-// UART driver
-#include "driver/uart.h"
 
 // wifi
 #include "wifi.h"
@@ -18,7 +13,7 @@
 // Queues
 QueueHandle_t queue_echo_to_wifi;
 
-// Event group
+// Event groups
 EventGroupHandle_t wifi_event_group;
 
 // Main application
@@ -33,7 +28,7 @@ void app_main()
 	initialize_wifi();
 	initialize_uart();
 
-	// start the main task
+	// start the wifi task
 	xTaskCreate(&wifi_task, "wifi_task", 2048, NULL, 5, NULL);
 
 	// start echo task with priority lower than wifi task
