@@ -4,3 +4,6 @@
 
 esp_err_t initialize_i2c_master();
 esp_err_t initialize_i2c_slave(uint16_t slave_addr);
+
+void i2c_master_task(void *pvParameter);
+void i2c_slave_task(void *pvParameter);
