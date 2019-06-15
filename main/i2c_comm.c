@@ -29,10 +29,18 @@
 #define COMMAND_LENGTH  3
 
 extern QueueHandle_t queue_uart_to_i2c;
+extern QueueHandle_t queue_i2c_to_wifi;
 
 
 esp_err_t initialize_i2c_master()
 {
+    // create a queue capable of containing 5 char values
+    queue_i2c_to_wifi = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_i2c_to_wifi == NULL)
+    {
+        printf("Could not create uart_to_i2c QUEUE.\n");
+    }
+
     int i2c_master_port = I2C_MASTER_NUM;
     i2c_config_t i2c_master_config = {
         .mode = I2C_MODE_MASTER,
@@ -94,6 +102,7 @@ void i2c_master_task(void *pvParameter)
 {
     int ret;
     uint8_t* data_rd = (uint8_t*)malloc(DATA_LENGTH);
+    BaseType_t xStatus;
 
     while (1)   
     {
@@ -109,6 +118,11 @@ void i2c_master_task(void *pvParameter)
             if (*(data_rd) == COMMAND_START && *(data_rd + 2) == COMMAND_END)
             {
                 printf("I2C Master Task read from slave the value: %c\n", *(data_rd + 1));
+                xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_rd + 1, 0);
+                if (xStatus != pdPASS)
+                {
+                    printf("Could not send the data to the queue.\n");
+                }
             }
         } 
         else 

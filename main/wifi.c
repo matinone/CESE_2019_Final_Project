@@ -14,7 +14,7 @@
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
 
-extern QueueHandle_t queue_echo_to_wifi;
+extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
 
 const int CONNECTED_BIT = BIT0;
@@ -121,10 +121,10 @@ void wifi_task(void *pvParameter)
 	while (1)
 	{
 		// Read data from the queue
-		xStatus = xQueueReceive( queue_echo_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
+		xStatus = xQueueReceive( queue_i2c_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
 		{
-			printf("\nReceived from ECHO TASK: %d\n", queue_rcv_value);
+			printf("\nReceived from I2C MASTER TASK: %d\n", queue_rcv_value);
 			sprintf(request_buffer, REQUEST, queue_rcv_value);
 
 			// create a new socket
@@ -177,7 +177,7 @@ void wifi_task(void *pvParameter)
 		}   // if (rcv_len > 0)
 		else 
 		{
-			printf("Nothing received from ECHO Task.\n");
+			// printf("Nothing received from ECHO Task.\n");
 		}
 
 		vTaskDelay(1000 / portTICK_RATE_MS);

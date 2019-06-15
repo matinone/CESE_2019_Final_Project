@@ -13,6 +13,7 @@
 
 // Queues
 QueueHandle_t queue_uart_to_i2c;
+QueueHandle_t queue_i2c_to_wifi;
 
 // Event groups
 EventGroupHandle_t wifi_event_group;
@@ -33,7 +34,7 @@ void app_main()
 	initialize_i2c_slave(I2C_ESP_SLAVE_ADDR);
 
 	// start the wifi task
-	// xTaskCreate(&wifi_task, "wifi_task", 2048, NULL, 5, NULL);
+	xTaskCreate(&wifi_task, "wifi_task", 2048, NULL, 5, NULL);
 
 	// start echo task with priority lower than wifi task
 	xTaskCreate(&echo_task, "echo_task", 2048, NULL, 4, NULL);
