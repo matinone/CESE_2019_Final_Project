@@ -9,19 +9,19 @@
 
 #define I2C_SLAVE_SCL_IO 26                 // gpio for I2C slave clock (SCL)
 #define I2C_SLAVE_SDA_IO 25                 // gpio for I2c slave data (SDA)
-#define I2C_SLAVE_NUM 0             
+#define I2C_SLAVE_NUM I2C_NUM_0             
 #define I2C_SLAVE_TX_BUF_LEN (2 * DATA_LENGTH)             
 #define I2C_SLAVE_RX_BUF_LEN (2 * DATA_LENGTH)             
 
 #define I2C_MASTER_SCL_IO 19                // gpio for I2C slave clock (SCL)
 #define I2C_MASTER_SDA_IO 18                // gpio for I2c slave data (SDA)
-#define I2C_MASTER_NUM 1 
+#define I2C_MASTER_NUM I2C_NUM_1
 #define I2C_MASTER_FREQ_HZ 100000           //I2C master clock frequency */
 #define I2C_MASTER_TX_BUF_DISABLE 0         // master does not need buffer
 #define I2C_MASTER_RX_BUF_DISABLE 0         // master does not need buffer
 
 
-esp_err_t i2c_master_init()
+esp_err_t initialize_i2c_master()
 {
     int i2c_master_port = I2C_MASTER_NUM;
     i2c_config_t i2c_master_config = {
@@ -40,7 +40,7 @@ esp_err_t i2c_master_init()
 }
 
 
-esp_err_t i2c_slave_init(uint16_t slave_addr)
+esp_err_t initialize_i2c_slave(uint16_t slave_addr)
 {
     int i2c_slave_port = I2C_SLAVE_NUM;
     i2c_config_t i2c_slave_config = {

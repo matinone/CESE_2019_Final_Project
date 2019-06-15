@@ -3,7 +3,7 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := 04_httpclient
+PROJECT_NAME := cese_final_project
 
 include $(IDF_PATH)/make/project.mk
 

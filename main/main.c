@@ -9,6 +9,7 @@
 // wifi
 #include "wifi.h"
 #include "echo_uart.h"
+#include "i2c_comm.h"
 
 // Queues
 QueueHandle_t queue_echo_to_wifi;
@@ -27,6 +28,9 @@ void app_main()
 	
 	initialize_wifi();
 	initialize_uart();
+
+	initialize_i2c_master();
+	initialize_i2c_slave(I2C_ESP_SLAVE_ADDR);
 
 	// start the wifi task
 	xTaskCreate(&wifi_task, "wifi_task", 2048, NULL, 5, NULL);
