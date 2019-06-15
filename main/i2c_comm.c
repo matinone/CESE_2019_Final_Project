@@ -28,7 +28,7 @@
 #define COMMAND_END     'e'
 #define COMMAND_LENGTH  3
 
-extern QueueHandle_t queue_echo_to_wifi;
+extern QueueHandle_t queue_uart_to_i2c;
 
 
 esp_err_t initialize_i2c_master()
@@ -132,7 +132,7 @@ void i2c_slave_task(void *pvParameter)
     while (1)
     {
         // read data from the queue
-        xStatus = xQueueReceive( queue_echo_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
+        xStatus = xQueueReceive( queue_uart_to_i2c, &queue_rcv_value,  20 / portTICK_RATE_MS);
         if (xStatus == pdPASS)
         {   
             command_frame[1] = queue_rcv_value;

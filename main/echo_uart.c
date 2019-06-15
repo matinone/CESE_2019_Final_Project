@@ -5,7 +5,7 @@
 // UART driver
 #include "driver/uart.h"
 
-extern QueueHandle_t queue_echo_to_wifi;
+extern QueueHandle_t queue_uart_to_i2c;
 
 void initialize_uart()
 {
@@ -22,8 +22,8 @@ void initialize_uart()
     uart_driver_install(UART_NUM_0, 1024, 0, 0, NULL, 0);
 
     // create a queue capable of containing 5 char values
-    queue_echo_to_wifi = xQueueCreate(5, sizeof(uint8_t));
-    if (queue_echo_to_wifi == NULL)
+    queue_uart_to_i2c = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_uart_to_i2c == NULL)
     {
     	printf("Could not create echo_uart QUEUE.\n");
     }
@@ -41,9 +41,9 @@ void echo_task(void *pvParameter)
 		rcv_len = uart_read_bytes(UART_NUM_0, (uint8_t*)uart_rcv_buffer, 1, 20 / portTICK_RATE_MS);
 		if (rcv_len > 0)
 		{
-			printf("\nReceived from UART: %d (Echo Task)\n", *uart_rcv_buffer);
+			printf("\nReceived from UART: %c (Echo Task)\n", *uart_rcv_buffer);
 			// send the received value to the queue (wait 0ms if the queue is empty)
-			xStatus = xQueueSendToBack( queue_echo_to_wifi, uart_rcv_buffer, 0 );
+			xStatus = xQueueSendToBack( queue_uart_to_i2c, uart_rcv_buffer, 0 );
 			if (xStatus != pdPASS)
 			{
 				printf("Could not send the data to the queue.\n");
