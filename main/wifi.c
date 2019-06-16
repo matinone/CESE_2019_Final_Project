@@ -124,7 +124,7 @@ void wifi_task(void *pvParameter)
 		xStatus = xQueueReceive( queue_i2c_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
 		{
-			printf("\nReceived from I2C MASTER TASK: %d\n", queue_rcv_value);
+			printf("\nReceived from I2C MASTER TASK: %c\n", queue_rcv_value);
 			sprintf(request_buffer, REQUEST, queue_rcv_value);
 
 			// create a new socket
