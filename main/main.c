@@ -33,6 +33,10 @@ void app_main()
 	initialize_i2c_master();
 	initialize_i2c_slave(I2C_ESP_SLAVE_ADDR);
 
+	// NOTE: 
+	// printf is redirected to the UART and it is thread safe, 
+	// therefore there is no need to use mutexes or any other synchronization method during printf calls
+
 	// start the wifi task
 	xTaskCreate(&wifi_task, "wifi_task", 2048, NULL, 5, NULL);
 
