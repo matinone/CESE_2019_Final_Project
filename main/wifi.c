@@ -118,11 +118,12 @@ void wifi_task(void *pvParameter)
 			// create a new socket
 			int s = socket(res->ai_family, res->ai_socktype, 0);
 			if(s < 0) {
-				printf("Unable to allocate a new socket\n");
-				while(1) vTaskDelay(1000 / portTICK_RATE_MS);
+				printf("Unable to allocate a new socket, not sending to ThingSpeak the received data.\n");
+				continue;
 			}
 			printf("Socket allocated, id=%d\n", s);
 
+			// set socket timeout to 1 second (1000000 us)
 			struct timeval timeout = {
 				.tv_sec = 1,
 				.tv_usec = 1000000,
@@ -133,18 +134,18 @@ void wifi_task(void *pvParameter)
 			// connect to the specified server
 			int con_result = connect(s, res->ai_addr, res->ai_addrlen);
 			if(con_result != 0) {
-				printf("Unable to connect to the target website\n");
+				printf("Unable to connect to the target website, not sending to ThingSpeak the received data.\n");
 				close(s);
-				while(1) vTaskDelay(1000 / portTICK_RATE_MS);
+				continue;
 			}
 			printf("Connected to the target website\n");
 
 			// send the request
 			result = write(s, request_buffer, strlen(request_buffer));
 			if(result < 0) {
-				printf("Unable to send the HTTP request\n");
+				printf("Unable to send the HTTP request, not sending to ThingSpeak the received data.\n");
 				close(s);
-				while(1) vTaskDelay(1000 / portTICK_RATE_MS);
+				continue;
 			}
 			printf("HTTP request sent:  %s\n", request_buffer);
 			
