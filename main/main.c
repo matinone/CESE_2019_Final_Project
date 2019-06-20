@@ -52,4 +52,6 @@ void app_main()
 	xTaskCreate(&echo_task, "echo_task", 2048, NULL, 4, NULL);
 	xTaskCreate(&i2c_master_task, "i2c_master_task", 2048, NULL, 4, NULL);
 	xTaskCreate(&i2c_slave_task, "i2c_slave_task", 2048, NULL, 4, NULL);
+
+	// vTaskStartScheduler is called in the startup code before app_main is executed (check start_cpu0 function in ESP-IDF components/esp32/cpu_start.c)
 }
