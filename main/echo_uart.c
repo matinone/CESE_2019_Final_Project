@@ -1,12 +1,28 @@
+/* ===== [echo_uart.c] =====
+ * Copyright Matias Brignone <mnbrignone@gmail.com>
+ * All rights reserved.
+ *
+ * Version: 0.1.0
+ * Creation Date: 2019
+ */
+
+
+/* ===== Dependencies ===== */
 #include "echo_uart.h"
-
 #include "freertos/FreeRTOS.h"
+#include "driver/uart.h"		// UART driver
 
-// UART driver
-#include "driver/uart.h"
+/* ===== Macros of private constants ===== */
 
+
+/* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_uart_to_i2c;
 
+
+/* ===== Prototypes of private functions ===== */
+
+
+/* ===== Implementations of public functions ===== */
 void initialize_uart()
 {
 	// configure the UART0 controller
@@ -52,3 +68,5 @@ void echo_task(void *pvParameter)
 		vTaskDelay(100 / portTICK_RATE_MS);
 	}
 }
+
+/* ===== Implementations of private functions ===== */
