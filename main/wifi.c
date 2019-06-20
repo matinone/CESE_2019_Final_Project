@@ -1,5 +1,13 @@
-#include "wifi.h"
+/* ===== [wifi.h] =====
+ * Copyright Matias Brignone <mnbrignone@gmail.com>
+ * All rights reserved.
+ *
+ * Version: 0.1.0
+ * Creation Date: 2019
+ */
 
+/* ===== Dependencies ===== */
+#include "wifi.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -14,43 +22,22 @@
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
 
+/* ===== Macros of private constants ===== */
+
+/* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
-
 const int CONNECTED_BIT = BIT0;
-
 // HTTP request
 char *REQUEST = "GET "CONFIG_RESOURCE" HTTP/1.1\r\n"
 	"Host: "CONFIG_WEBSITE"\r\n"
 	"User-Agent: ESP32\r\n"
 	"\r\n";
 
+/* ===== Prototypes of private functions ===== */
+static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
 
-// Wifi event handler
-static esp_err_t event_handler(void *ctx, system_event_t *event)
-{
-	switch(event->event_id) {
-		
-	case SYSTEM_EVENT_STA_START:
-		esp_wifi_connect();
-		break;
-	
-	case SYSTEM_EVENT_STA_GOT_IP:
-		xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-		break;
-	
-	case SYSTEM_EVENT_STA_DISCONNECTED:
-		xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-		break;
-	
-	default:
-		break;
-	}
-   
-	return ESP_OK;
-}
-
-
+/* ===== Implementations of public functions ===== */
 void initialize_wifi()
 {
 	// create the event group to handle wifi events
@@ -60,7 +47,7 @@ void initialize_wifi()
 	tcpip_adapter_init();
 
 	// initialize the wifi event handler
-	ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+	ESP_ERROR_CHECK(esp_event_loop_init(wifi_event_handler, NULL));
 	
 	// initialize the wifi stack in STAtion mode with config in RAM
 	wifi_init_config_t wifi_init_config = WIFI_INIT_CONFIG_DEFAULT();
@@ -80,7 +67,7 @@ void initialize_wifi()
 	printf("Connecting to %s... ", CONFIG_WIFI_SSID);
 }
 
-// wifi task
+
 void wifi_task(void *pvParameter)
 {
 	// wait for connection
@@ -182,4 +169,29 @@ void wifi_task(void *pvParameter)
 
 		vTaskDelay(1000 / portTICK_RATE_MS);
 	}   // while(1)
+}
+
+
+/* ===== Implementations of private functions ===== */
+static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
+{
+	switch(event->event_id) {
+		
+	case SYSTEM_EVENT_STA_START:
+		esp_wifi_connect();
+		break;
+	
+	case SYSTEM_EVENT_STA_GOT_IP:
+		xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+		break;
+	
+	case SYSTEM_EVENT_STA_DISCONNECTED:
+		xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+		break;
+	
+	default:
+		break;
+	}
+   
+	return ESP_OK;
 }
