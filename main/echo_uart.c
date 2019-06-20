@@ -13,7 +13,9 @@
 #include "driver/uart.h"		// UART driver
 
 /* ===== Macros of private constants ===== */
-
+#define UART_RX_CHECK_TIME_MS 100
+#define UART_TX_PIN 1
+#define UART_RX_PIN 3
 
 /* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_uart_to_i2c;
@@ -34,7 +36,7 @@ void initialize_uart()
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
     uart_param_config(UART_NUM_0, &uart_config);
-    uart_set_pin(UART_NUM_0, 1, 3, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    uart_set_pin(UART_NUM_0, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     uart_driver_install(UART_NUM_0, 1024, 0, 0, NULL, 0);
 
     // create a queue capable of containing 5 char values
@@ -65,7 +67,7 @@ void echo_task(void *pvParameter)
 				printf("Could not send the data to the queue.\n");
 			}
 		}
-		vTaskDelay(100 / portTICK_RATE_MS);
+		vTaskDelay(UART_RX_CHECK_TIME_MS / portTICK_RATE_MS);
 	}
 }
 
