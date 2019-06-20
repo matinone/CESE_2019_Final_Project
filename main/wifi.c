@@ -28,6 +28,8 @@
 extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
 const int CONNECTED_BIT = BIT0;
+static const char *TAG = "WIFI_TASK";
+
 // HTTP request
 char *REQUEST = "GET "CONFIG_RESOURCE" HTTP/1.1\r\n"
 	"Host: "CONFIG_WEBSITE"\r\n"
@@ -72,8 +74,7 @@ void wifi_task(void *pvParameter)
 {
 	// wait for connection
 	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
-	printf("connected!\n");
-	printf("\n");
+	printf("WiFi successfully connected.\n\n");
 	
 	// print the local IP address
 	tcpip_adapter_ip_info_t ip_info;
@@ -111,7 +112,7 @@ void wifi_task(void *pvParameter)
 		xStatus = xQueueReceive( queue_i2c_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
 		{
-			printf("\nReceived from I2C MASTER TASK: %c\n", queue_rcv_value);
+			ESP_LOGI(TAG, "Received from I2C MASTER TASK: %c\n", queue_rcv_value);
 			sprintf(request_buffer, REQUEST, queue_rcv_value);
 
 			// create a new socket

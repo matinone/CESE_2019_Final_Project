@@ -10,7 +10,8 @@
 /* ===== Dependencies ===== */
 #include "echo_uart.h"
 #include "freertos/FreeRTOS.h"
-#include "driver/uart.h"		// UART driver
+#include "driver/uart.h"
+#include "esp_log.h"
 
 /* ===== Macros of private constants ===== */
 #define UART_RX_CHECK_TIME_MS 100
@@ -19,7 +20,7 @@
 
 /* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_uart_to_i2c;
-
+static const char* TAG = "UART_TASK";
 
 /* ===== Prototypes of private functions ===== */
 
@@ -59,7 +60,7 @@ void echo_task(void *pvParameter)
 		rcv_len = uart_read_bytes(UART_NUM_0, (uint8_t*)uart_rcv_buffer, 1, 20 / portTICK_RATE_MS);
 		if (rcv_len > 0)
 		{
-			printf("\nReceived from UART: %c (Echo Task)\n", *uart_rcv_buffer);
+			ESP_LOGI(TAG, "Received from UART: %c\n", *uart_rcv_buffer);
 			// send the received value to the queue (wait 0ms if the queue is empty)
 			xStatus = xQueueSendToBack( queue_uart_to_i2c, uart_rcv_buffer, 0 );
 			if (xStatus != pdPASS)

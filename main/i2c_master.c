@@ -33,6 +33,7 @@
 
 /* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_i2c_to_wifi;
+static const char* TAG = "I2C_MASTER_TASK";
 
 /* ===== Prototypes of private functions ===== */
 static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_rd, size_t size);
@@ -83,7 +84,7 @@ void i2c_master_task(void *pvParameter)
         {   
             if (*(data_rd) == COMMAND_START && *(data_rd + 2) == COMMAND_END)
             {
-                printf("I2C Master Task read from slave the value: %c\n", *(data_rd + 1));
+                ESP_LOGI(TAG, "I2C Master Task read from slave the value: %c\n", *(data_rd + 1));
                 xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_rd + 1, 0);
                 if (xStatus != pdPASS)
                 {

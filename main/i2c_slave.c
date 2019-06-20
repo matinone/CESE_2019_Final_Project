@@ -24,6 +24,7 @@
 
 /* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_uart_to_i2c;
+static const char *TAG = "I2C_SLAVE_TASK";
 
 /* ===== Prototypes of private functions ===== */
 
@@ -62,7 +63,7 @@ void i2c_slave_task(void *pvParameter)
         if (xStatus == pdPASS)
         {   
             command_frame[1] = queue_rcv_value;
-            printf("\nI2C TASK received from ECHO TASK: %c\n", command_frame[1]);
+            ESP_LOGI(TAG, "I2C TASK received from ECHO TASK: %c\n", command_frame[1]);
 
             d_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
             if (d_size == 0)
@@ -71,7 +72,7 @@ void i2c_slave_task(void *pvParameter)
             }
             else
             {
-                printf("%c successfully written to I2C slave buffer\n", command_frame[1]);
+                ESP_LOGI(TAG, "%c successfully written to I2C slave buffer\n", command_frame[1]);
             }
         }
 
