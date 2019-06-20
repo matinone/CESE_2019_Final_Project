@@ -1,4 +1,4 @@
-/* ===== [wifi.h] =====
+/* ===== [wifi.c] =====
  * Copyright Matias Brignone <mnbrignone@gmail.com>
  * All rights reserved.
  *
