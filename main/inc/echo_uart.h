@@ -36,7 +36,7 @@ void initialize_uart();
 /*------------------------------------------------------------------
 |  Function: echo_task
 | ------------------------------------------------------------------
-|  Description: used as a FreeRTOS task. It checks every 100ms if
+|  Description: FreeRTOS task. It checks every 100ms if
 |				there is new data to be received through UART and
 |				it passes that data to the I2C Slave task.
 |

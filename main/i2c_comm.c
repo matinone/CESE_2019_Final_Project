@@ -1,17 +1,27 @@
-#include "i2c_comm.h"
+/* ===== [i2c_comm.c] =====
+ * Copyright Matias Brignone <mnbrignone@gmail.com>
+ * All rights reserved.
+ *
+ * Version: 0.1.0
+ * Creation Date: 2019
+ */
 
+
+/* ===== Dependencies ===== */
+#include "i2c_comm.h"
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
 
+/* ===== Macros of private constants ===== */
 #define DATA_LENGTH 3                       // data buffer length
-
+// slave macros
 #define I2C_SLAVE_SCL_IO 26                 // gpio for I2C slave clock (SCL)
 #define I2C_SLAVE_SDA_IO 25                 // gpio for I2c slave data (SDA)
 #define I2C_SLAVE_NUM I2C_NUM_0             
 #define I2C_SLAVE_TX_BUF_LEN 1024           
 #define I2C_SLAVE_RX_BUF_LEN 1024           
-
+// master macros
 #define I2C_MASTER_SCL_IO 19                // gpio for I2C slave clock (SCL)
 #define I2C_MASTER_SDA_IO 18                // gpio for I2c slave data (SDA)
 #define I2C_MASTER_NUM I2C_NUM_1
@@ -21,17 +31,21 @@
 
 #define ACK_CHECK_EN 0x1                    // I2C master will check ack from slave
 #define ACK_CHECK_DIS 0x0                   // I2C master will not check ack from slave
-#define ACK_VAL 0x0                         //I2C ack value
-#define NACK_VAL 0x1                        //I2C nack value
+#define ACK_VAL 0x0                         // I2C ack value
+#define NACK_VAL 0x1                        // I2C nack value
 
 #define COMMAND_START   's'
 #define COMMAND_END     'e'
 #define COMMAND_LENGTH  3
 
+/* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_uart_to_i2c;
 extern QueueHandle_t queue_i2c_to_wifi;
 
+/* ===== Prototypes of private functions ===== */
+static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_rd, size_t size);
 
+/* ===== Implementations of public functions ===== */
 esp_err_t initialize_i2c_master()
 {
     // create a queue capable of containing 5 char values
@@ -78,26 +92,6 @@ esp_err_t initialize_i2c_slave(uint16_t slave_addr)
 }
 
 
-static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_rd, size_t size)
-{
-    if (size == 0) {
-        return ESP_OK;
-    }
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, (slave_address << 1) | I2C_MASTER_READ, ACK_CHECK_EN);
-    if (size > 1) {
-        i2c_master_read(cmd, data_rd, size - 1, ACK_VAL);
-    }
-    i2c_master_read_byte(cmd, data_rd + size - 1, NACK_VAL);
-    i2c_master_stop(cmd);
-    esp_err_t ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd);
-    return ret;
-}
-
-
-// i2c master task
 void i2c_master_task(void *pvParameter)
 {
     int ret;
@@ -135,7 +129,6 @@ void i2c_master_task(void *pvParameter)
 }
 
 
-// i2c slave task
 void i2c_slave_task(void *pvParameter)
 {
     uint8_t queue_rcv_value;
@@ -166,4 +159,24 @@ void i2c_slave_task(void *pvParameter)
         vTaskDelay(1000 / portTICK_RATE_MS);
 
     }   // while(1)
+}
+
+
+/* ===== Implementations of private functions ===== */
+static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_rd, size_t size)
+{
+    if (size == 0) {
+        return ESP_OK;
+    }
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (slave_address << 1) | I2C_MASTER_READ, ACK_CHECK_EN);
+    if (size > 1) {
+        i2c_master_read(cmd, data_rd, size - 1, ACK_VAL);
+    }
+    i2c_master_read_byte(cmd, data_rd + size - 1, NACK_VAL);
+    i2c_master_stop(cmd);
+    esp_err_t ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
+    i2c_cmd_link_delete(cmd);
+    return ret;
 }
