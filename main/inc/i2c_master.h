@@ -1,4 +1,4 @@
-/* ===== [i2c_comm.h] =====
+/* ===== [i2c_master.h] =====
  * Copyright Matias Brignone <mnbrignone@gmail.com>
  * All rights reserved.
  *
@@ -7,16 +7,13 @@
  */
 
 /* ===== Avoid multiple inclusion ===== */
-#ifndef __I2C_COMM_H__
-#define __I2C_COMM_H__
+#ifndef __I2C_MASTER_H__
+#define __I2C_MASTER_H__
 
 /* ===== Dependencies ===== */
 #include "driver/i2c.h"
 
 /* ===== Macros of public constants ===== */
-#define I2C_ESP_SLAVE_ADDR 0x28
-#define I2C_SLAVE_SCL_IO 26 	// gpio for I2C slave clock (SCL)
-#define I2C_SLAVE_SDA_IO 25 	// gpio for I2c slave data (SDA)
 #define I2C_MASTER_SCL_IO 19	// gpio for I2C slave clock (SCL)
 #define I2C_MASTER_SDA_IO 18	// gpio for I2c slave data (SDA)
 
@@ -39,20 +36,6 @@ esp_err_t initialize_i2c_master();
 
 
 /*------------------------------------------------------------------
-|  Function: initialize_i2c_slave
-| ------------------------------------------------------------------
-|  Description: it configures the I2C slave port using default
-|				GPIOs.
-|
-|  Parameters:
-|		-
-|
-|  Returns:  esp_err_t
-*-------------------------------------------------------------------*/
-esp_err_t initialize_i2c_slave(uint16_t slave_addr);
-
-
-/*------------------------------------------------------------------
 |  Function: i2c_master_task
 | ------------------------------------------------------------------
 |  Description: FreeRTOS task. It periodically reads the I2C slave,
@@ -67,21 +50,5 @@ esp_err_t initialize_i2c_slave(uint16_t slave_addr);
 *-------------------------------------------------------------------*/
 void i2c_master_task(void *pvParameter);
 
-
-/*------------------------------------------------------------------
-|  Function: i2c_slave_task
-| ------------------------------------------------------------------
-|  Description: FreeRTOS task. It periodically checks if the UART
-|				task have sent new data. If yes, it write the data
-|				in the I2C buffer that the master would read.
-|
-|  Parameters:
-|		- pvParameter: void pointer used as task parameter during
-|					   task creation.
-|
-|  Returns:  void
-*-------------------------------------------------------------------*/
-void i2c_slave_task(void *pvParameter);
-
 /* ===== Avoid multiple inclusion ===== */
-#endif // __I2C_COMM_H__
+#endif // __I2C_MASTER_H__

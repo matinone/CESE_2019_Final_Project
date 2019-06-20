@@ -17,7 +17,8 @@
 
 #include "wifi.h"
 #include "echo_uart.h"
-#include "i2c_comm.h"
+#include "i2c_master.h"
+#include "i2c_slave.h"
 
 // queues
 QueueHandle_t queue_uart_to_i2c;		// queue to pass data between the ECHO TASK and the I2C SLAVE TASK 
