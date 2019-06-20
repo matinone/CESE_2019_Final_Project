@@ -83,8 +83,8 @@ CONFIG_MONITOR_BAUD=115200
 #
 # Example configuration
 #
-CONFIG_WIFI_SSID="xxxx"
-CONFIG_WIFI_PASSWORD="xxxx"
+CONFIG_WIFI_SSID="Family B Ext"
+CONFIG_WIFI_PASSWORD="walterhome"
 CONFIG_WEBSITE="api.thingspeak.com"
 CONFIG_RESOURCE="/update?api_key=2WBYREDTIXQ6X9PF&field1=%d"
 
