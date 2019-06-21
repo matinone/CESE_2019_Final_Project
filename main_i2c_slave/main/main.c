@@ -6,9 +6,8 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
-// wifi
 #include "echo_uart.h"
-#include "i2c_comm.h"
+#include "i2c_slave.h"
 
 // Queues
 QueueHandle_t queue_uart_to_i2c;
