@@ -63,7 +63,7 @@ void i2c_slave_task(void *pvParameter)
         if (xStatus == pdPASS)
         {   
             command_frame[1] = queue_rcv_value;
-            ESP_LOGI(TAG, "I2C TASK received from ECHO TASK: %c\n", command_frame[1]);
+            ESP_LOGI(TAG, "I2C TASK received from UART TASK: %c\n", command_frame[1]);
 
             d_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
             if (d_size == 0)
