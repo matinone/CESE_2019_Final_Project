@@ -1,6 +1,9 @@
 # Build folder
 build/
 
+# Sdkconfig.old files
+sdkconfig.old
+
 # Prerequisites
 *.d
 
