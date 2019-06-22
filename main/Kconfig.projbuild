@@ -1,4 +1,4 @@
-menu "Example configuration"
+menu "WiFi/HTTP configuration"
 
 	config WIFI_SSID
 		string "WIFI Network SSID"
@@ -16,10 +16,16 @@ menu "Example configuration"
 		help
 			Enter the address of the target website
 	
-	config RESOURCE
-		string "Website resource"
+	config HTTP_REQUEST_WRITE
+		string "HTTP request to write to ThingSpeak"
 		default "/"
 		help
-			Enter the resource URL
+			Enter the HTTP request
+
+	config HTTP_REQUEST_READ
+		string "HTTP request to read from ThingSpeak"
+		default "/"
+		help
+			Enter the HTTP request
 	
 endmenu

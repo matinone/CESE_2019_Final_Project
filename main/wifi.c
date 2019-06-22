@@ -31,13 +31,19 @@ const int CONNECTED_BIT = BIT0;
 static const char *TAG = "WIFI_TASK";
 
 // HTTP request
-char *REQUEST = "GET "CONFIG_RESOURCE" HTTP/1.1\r\n"
+char* REQUEST_WRITE = "GET "CONFIG_HTTP_REQUEST_WRITE" HTTP/1.1\r\n"
+	"Host: "CONFIG_WEBSITE"\r\n"
+	"User-Agent: ESP32\r\n"
+	"\r\n";
+
+char* REQUEST_READ = "GET "CONFIG_HTTP_REQUEST_READ" HTTP/1.1\r\n"
 	"Host: "CONFIG_WEBSITE"\r\n"
 	"User-Agent: ESP32\r\n"
 	"\r\n";
 
 /* ===== Prototypes of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
+static int send_http_request(int socket_handler, struct addrinfo* res, char* http_request);
 
 /* ===== Implementations of public functions ===== */
 void initialize_wifi()
@@ -93,6 +99,7 @@ void wifi_task(void *pvParameter)
 	// address info struct and receive buffer
 	struct addrinfo *res;
 	char recv_buf[100];
+	// char content_buf[100];
 	
 	// resolve the IP of the target website
 	int result = getaddrinfo(CONFIG_WEBSITE, "80", &hints, &res);
@@ -103,8 +110,10 @@ void wifi_task(void *pvParameter)
 	printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
 	
 	uint8_t queue_rcv_value;
-	char request_buffer[strlen(REQUEST)];
+	char request_buffer[strlen(REQUEST_WRITE)];
 	BaseType_t xStatus;
+	// char * pch;
+
 
 	while (1)
 	{
@@ -113,56 +122,64 @@ void wifi_task(void *pvParameter)
 		if (xStatus == pdPASS)
 		{
 			ESP_LOGI(TAG, "Received from I2C MASTER TASK: %c\n", queue_rcv_value);
-			sprintf(request_buffer, REQUEST, queue_rcv_value);
+			sprintf(request_buffer, REQUEST_WRITE, queue_rcv_value);
 
 			// create a new socket
 			int s = socket(res->ai_family, res->ai_socktype, 0);
-			if(s < 0) {
-				printf("Unable to allocate a new socket, not sending to ThingSpeak the received data.\n");
+			int request_status = send_http_request(s, res, request_buffer);
+			if (request_status < 0)
+			{
 				continue;
 			}
-			printf("Socket allocated, id=%d\n", s);
-
-			// set socket timeout to 1 second (1000000 us)
-			struct timeval timeout = {
-				.tv_sec = 1,
-				.tv_usec = 1000000,
-				};
-
-			lwip_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 			
-			// connect to the specified server
-			int con_result = connect(s, res->ai_addr, res->ai_addrlen);
-			if(con_result != 0) {
-				printf("Unable to connect to the target website, not sending to ThingSpeak the received data.\n");
-				close(s);
-				continue;
-			}
-			printf("Connected to the target website\n");
-
-			// send the request
-			result = write(s, request_buffer, strlen(request_buffer));
-			if(result < 0) {
-				printf("Unable to send the HTTP request, not sending to ThingSpeak the received data.\n");
-				close(s);
-				continue;
-			}
-			printf("HTTP request sent:  %s\n", request_buffer);
-			
-			// print the response
-			printf("HTTP response:\n");
-			printf("--------------------------------------------------------------------------------\n");
+			printf("Receiving HTTP response.\n");
 			int r;
+			int flag_rsp_ok = 0;
+			// int flag_content = 0;
+			// content_buf[0] = '\0';
 			do {
 				bzero(recv_buf, sizeof(recv_buf));
 				r = read(s, recv_buf, sizeof(recv_buf) - 1);
-				for(int i = 0; i < r; i++) {
-					putchar(recv_buf[i]);
-				}
-			} while(r > 0); 
-			printf("--------------------------------------------------------------------------------\n");
 
+  				if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
+  				{
+  					flag_rsp_ok = 1;
+  				}
+
+  				// pch = strstr(recv_buf, "created_at");
+  				// if (pch != NULL || flag_content == 1)
+  				// {
+  				// 	if (pch != NULL)
+  				// 	{
+  				// 		strcat(content_buf, pch);
+  				// 	}
+  				// 	else
+  				// 	{
+  				// 		strcat(content_buf, recv_buf);
+  				// 	}
+  					
+  				// 	flag_content = 1;
+  				// }
+
+			} while(r > 0);
+
+			// close socket
 			close(s);
+
+			if (flag_rsp_ok == 1)
+			{
+				printf("HTTP response status OK.\n");
+				// pch = strtok (content_buf,"\n,");
+				// while (pch != NULL && strcmp(pch, "\r") != 0)
+				// {
+				// 	printf ("Token: %s\n", pch);
+				//  	pch = strtok (NULL, "\n,");
+				// }
+			}
+			else {
+				printf("HTTP response status NOT OK.\n");
+			}
+
 		}   // if (rcv_len > 0)
 		else 
 		{
@@ -196,4 +213,42 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 	}
    
 	return ESP_OK;
+}
+
+
+static int send_http_request(int socket_handler, struct addrinfo* res, char* http_request)
+{
+	if(socket_handler < 0) {
+		printf("Unable to allocate a new socket, not sending to ThingSpeak the received data.\n");
+		return -1;
+	}
+	printf("Socket allocated, id=%d\n", socket_handler);
+
+	// set socket timeout to 1 second (1000000 us)
+	struct timeval timeout = {
+		.tv_sec = 1,
+		.tv_usec = 1000000,
+		};
+
+	lwip_setsockopt(socket_handler, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+	
+	// connect to the specified server
+	int con_result = connect(socket_handler, res->ai_addr, res->ai_addrlen);
+	if(con_result != 0) {
+		printf("Unable to connect to the target website, not sending to ThingSpeak the received data.\n");
+		close(socket_handler);
+		return -1;
+	}
+	printf("Connected to the target website\n");
+
+	// send the request
+	int result = write(socket_handler, http_request, strlen(http_request));
+	if(result < 0) {
+		printf("Unable to send the HTTP request, not sending to ThingSpeak the received data.\n");
+		close(socket_handler);
+		return -1;
+	}
+	printf("HTTP request sent:  %s\n", http_request);
+
+	return 0;
 }

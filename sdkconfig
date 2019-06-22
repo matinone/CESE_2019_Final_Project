@@ -81,12 +81,13 @@ CONFIG_MONITOR_BAUD_OTHER_VAL=115200
 CONFIG_MONITOR_BAUD=115200
 
 #
-# Example configuration
+# WiFi/HTTP configuration
 #
 CONFIG_WIFI_SSID="xxxx"
 CONFIG_WIFI_PASSWORD="xxxx"
 CONFIG_WEBSITE="api.thingspeak.com"
-CONFIG_RESOURCE="/update?api_key=2WBYREDTIXQ6X9PF&field1=%d"
+CONFIG_HTTP_REQUEST_WRITE="/update?api_key=2WBYREDTIXQ6X9PF&field1=%d"
+CONFIG_HTTP_REQUEST_READ="/channels/776064/fields/1.csv?api_key=E5V8ERAC6B0Y8160&minutes=5"
 
 #
 # Partition Table
