@@ -100,7 +100,7 @@ void wifi_task(void *pvParameter)
 	printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
 	
 	uint8_t queue_rcv_value;
-	char request_buffer[strlen(HTTP_REQUEST_READ_CMD)];	// HTTP_REQUEST_READ_CMD is the longest request
+	char request_buffer[strlen(HTTP_REQUEST_WRITE)];
 	BaseType_t xStatus;
 	char * pch;
 
@@ -111,15 +111,7 @@ void wifi_task(void *pvParameter)
 		if (xStatus == pdPASS)
 		{
 			ESP_LOGI(TAG, "Received from I2C MASTER TASK: %c\n", queue_rcv_value);
-			
-			if (queue_rcv_value == 'R')
-			{
-				sprintf(request_buffer, HTTP_REQUEST_READ_CMD);	
-			}
-			else
-			{
-				sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
-			}
+			sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
 			
 			// create a new socket
 			int s = socket(res->ai_family, res->ai_socktype, 0);
@@ -169,19 +161,6 @@ void wifi_task(void *pvParameter)
 				printf("\nHTTP response status OK.\n");
 				printf("Response Content: %s\n", content_buf);
 
-				if (queue_rcv_value == 'R')
-				{
-					pch = strstr(content_buf, "CMD_");
-					if (pch != NULL)
-					{
-						printf("Received new command: %s\n", content_buf);
-					}
-					else
-					{
-						printf("No new commands\n");
-					}
-				}
-				
 				// pch = strtok (content_buf,"\n,");
 				// while (pch != NULL && strcmp(pch, "\r") != 0)
 				// {
@@ -209,9 +188,6 @@ void wifi_rx_cmd_task(void * pvParameter)
 {
 	// wait for connection
 	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
-	printf("WiFi successfully connected.\n\n");
-
-	// vTaskDelay(25000 / portTICK_RATE_MS);
 
 	// define connection parameters
 	const struct addrinfo hints = {
@@ -230,7 +206,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 		printf("Unable to resolve IP for target website %s\n", CONFIG_WEBSITE);
 		while(1) vTaskDelay(1000 / portTICK_RATE_MS);
 	}
-	printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
+	// printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
 	
 	char * pch;
 
@@ -338,7 +314,7 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 		printf("Unable to allocate a new socket, not sending to ThingSpeak the received data.\n");
 		return -1;
 	}
-	printf("Socket allocated, id=%d\n", socket_handler);
+	printf("Socket allocated, id=%d.\n", socket_handler);
 
 	// set socket timeout to 1 second (1000000 us)
 	struct timeval timeout = {
@@ -355,7 +331,7 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 		close(socket_handler);
 		return -1;
 	}
-	printf("Connected to the target website\n");
+	printf("Connected to the target website.\n");
 
 	// send the request
 	int result = write(socket_handler, http_request, strlen(http_request));
