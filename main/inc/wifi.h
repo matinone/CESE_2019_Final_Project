@@ -50,5 +50,7 @@ void initialize_wifi();
 *-------------------------------------------------------------------*/
 void wifi_task(void *pvParameter);
 
+void wifi_rx_cmd_task(void * pvParameter);
+
 /* ===== Avoid multiple inclusion ===== */
 #endif // __WIFI_H__

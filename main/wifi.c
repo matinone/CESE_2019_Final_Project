@@ -205,6 +205,108 @@ void wifi_task(void *pvParameter)
 }
 
 
+void wifi_rx_cmd_task(void * pvParameter)
+{
+	// wait for connection
+	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+	printf("WiFi successfully connected.\n\n");
+
+	// vTaskDelay(25000 / portTICK_RATE_MS);
+
+	// define connection parameters
+	const struct addrinfo hints = {
+		.ai_family = AF_INET,
+		.ai_socktype = SOCK_STREAM,
+	};
+	
+	// address info struct and receive buffer
+	struct addrinfo *res;
+	char recv_buf[100];
+	char content_buf[100];
+	
+	// resolve the IP of the target website
+	int result = getaddrinfo(CONFIG_WEBSITE, "80", &hints, &res);
+	if((result != 0) || (res == NULL)) {
+		printf("Unable to resolve IP for target website %s\n", CONFIG_WEBSITE);
+		while(1) vTaskDelay(1000 / portTICK_RATE_MS);
+	}
+	printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
+	
+	char * pch;
+
+	// wait some initial time
+	vTaskDelay(5000 / portTICK_RATE_MS);
+
+	while (1)
+	{
+		printf("Checking if there is any new command to execute.\n");
+
+		// create a new socket
+		int s = socket(res->ai_family, res->ai_socktype, 0);
+		int request_status = send_http_request(s, res, HTTP_REQUEST_READ_CMD);
+		if (request_status < 0)
+		{
+			continue;
+		}
+		
+		printf("Receiving HTTP response.\n");
+		int r;
+		int flag_rsp_ok = 0;
+		int flag_content = 0;
+		content_buf[0] = '\0';
+		
+		do {
+			bzero(recv_buf, sizeof(recv_buf));
+			r = read(s, recv_buf, sizeof(recv_buf) - 1);
+			if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
+			{
+				flag_rsp_ok = 1;
+			}
+
+			pch = strstr(recv_buf, "\n\r\n");
+			if (pch != NULL || flag_content == 1)
+			{
+				if (pch != NULL)
+				{
+					strcat(content_buf, pch+3);	// pch + 3 to ignore the LF+CR+LF
+				}
+				else
+				{
+					strcat(content_buf, recv_buf);
+				}
+				
+				flag_content = 1;
+			}
+		} while(r > 0);
+
+		// close socket after receiving the response
+		close(s);
+
+		if (flag_rsp_ok == 1)
+		{
+			printf("\nHTTP response status OK.\n");
+			// printf("Response Content: %s\n", content_buf);
+
+			pch = strstr(content_buf, "CMD_");
+			if (pch != NULL)
+			{
+				printf("Received new command: %s\n", content_buf);
+			}
+			else
+			{
+				printf("No new commands\n");
+			}
+		}
+		else 
+		{
+			printf("HTTP response status NOT OK.\n");
+		}
+		vTaskDelay(15000 / portTICK_RATE_MS);
+	}
+}
+
+
+
 /* ===== Implementations of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 {
@@ -262,7 +364,8 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 		close(socket_handler);
 		return -1;
 	}
-	printf("HTTP request sent:  %s\n", http_request);
+	// printf("HTTP request sent:  %s\n", http_request);
+	printf("HTTP request sent.\n");
 
 	return 0;
 }
