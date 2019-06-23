@@ -131,7 +131,7 @@ void wifi_tx_task(void *pvParameter)
 			sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
 			
 			// create a new socket
-			int s = socket(res->ai_family, res->ai_socktype, 0);
+			int s = lwip_socket(res->ai_family, res->ai_socktype, 0);
 			int request_status = send_http_request(s, res, request_buffer);
 			if (request_status < 0)
 			{
@@ -146,7 +146,7 @@ void wifi_tx_task(void *pvParameter)
 			
 			do {
 				bzero(recv_buf, sizeof(recv_buf));
-				r = read(s, recv_buf, sizeof(recv_buf) - 1);
+				r = lwip_read(s, recv_buf, sizeof(recv_buf) - 1);
 
   				if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
   				{
@@ -171,7 +171,7 @@ void wifi_tx_task(void *pvParameter)
 			} while(r > 0);
 
 			// close socket after receiving the response
-			close(s);
+			lwip_close(s);
 
 			if (flag_rsp_ok == 1)
 			{
@@ -238,7 +238,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 		
 		do {
 			bzero(recv_buf, sizeof(recv_buf));
-			r = read(s, recv_buf, sizeof(recv_buf) - 1);
+			r = lwip_read(s, recv_buf, sizeof(recv_buf) - 1);
 			if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
 			{
 				flag_rsp_ok = 1;
@@ -261,7 +261,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 		} while(r > 0);
 
 		// close socket after receiving the response
-		close(s);
+		lwip_close(s);
 
 		if (flag_rsp_ok == 1)
 		{
@@ -332,19 +332,19 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 	lwip_setsockopt(socket_handler, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
 	// connect to the specified server
-	int con_result = connect(socket_handler, res->ai_addr, res->ai_addrlen);
+	int con_result = lwip_connect(socket_handler, res->ai_addr, res->ai_addrlen);
 	if(con_result != 0) {
 		printf("Unable to connect to the target website, not sending to ThingSpeak the received data.\n");
-		close(socket_handler);
+		lwip_close(socket_handler);
 		return -1;
 	}
 	// printf("Connected to the target website.\n");
 
 	// send the request
-	int result = write(socket_handler, http_request, strlen(http_request));
+	int result = lwip_write(socket_handler, http_request, strlen(http_request));
 	if(result < 0) {
 		printf("Unable to send the HTTP request, not sending to ThingSpeak the received data.\n");
-		close(socket_handler);
+		lwip_close(socket_handler);
 		return -1;
 	}
 	// printf("HTTP request sent:  %s\n", http_request);
