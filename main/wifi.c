@@ -28,8 +28,12 @@
 /* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
+
 const int CONNECTED_BIT = BIT0;
 static const char *TAG = "WIFI_TASK";
+
+// queue to pass the IP resolution from wifi_tx_task to wifi_rx_cmd_task
+QueueHandle_t queue_wifi_tx_to_rx;
 
 /* ===== Prototypes of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
@@ -38,9 +42,16 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 /* ===== Implementations of public functions ===== */
 void initialize_wifi()
 {
+	// create a queue capable of containing a single pointer to struct addrinfo
+    queue_wifi_tx_to_rx = xQueueCreate(1, sizeof(struct addrinfo *));
+    if (queue_wifi_tx_to_rx == NULL)
+    {
+    	printf("Could not create wifi_tx_to_rx QUEUE.\n");
+    }
+
 	// create the event group to handle wifi events
 	wifi_event_group = xEventGroupCreate();
-		
+	
 	// initialize the tcp stack
 	tcpip_adapter_init();
 
@@ -62,11 +73,11 @@ void initialize_wifi()
 	};
 	ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
 	ESP_ERROR_CHECK(esp_wifi_start());
-	printf("Connecting to %s... ", CONFIG_WIFI_SSID);
+	printf("Connecting to %s.", CONFIG_WIFI_SSID);
 }
 
 
-void wifi_task(void *pvParameter)
+void wifi_tx_task(void *pvParameter)
 {
 	// wait for connection
 	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
@@ -82,11 +93,11 @@ void wifi_task(void *pvParameter)
 	
 	// define connection parameters
 	const struct addrinfo hints = {
-		.ai_family = AF_INET,
-		.ai_socktype = SOCK_STREAM,
+		.ai_family = AF_INET,		// IPv4
+		.ai_socktype = SOCK_STREAM,	// TCP
 	};
 	
-	// address info struct and receive buffer
+	// address info struct and receive buffers
 	struct addrinfo *res;
 	char recv_buf[100];
 	char content_buf[100];
@@ -99,9 +110,15 @@ void wifi_task(void *pvParameter)
 	}
 	printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
 	
+	BaseType_t xStatus;
+	xStatus = xQueueSendToBack(queue_wifi_tx_to_rx, &res, 0);
+	if (xStatus != pdPASS)
+	{
+		printf("Could not send the IP address resolve information to the queue.\n");
+	}
+
 	uint8_t queue_rcv_value;
 	char request_buffer[strlen(HTTP_REQUEST_WRITE)];
-	BaseType_t xStatus;
 	char * pch;
 
 	while (1)
@@ -189,26 +206,14 @@ void wifi_rx_cmd_task(void * pvParameter)
 	// wait for connection
 	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 
-	// define connection parameters
-	const struct addrinfo hints = {
-		.ai_family = AF_INET,
-		.ai_socktype = SOCK_STREAM,
-	};
-	
-	// address info struct and receive buffer
+	// address info struct and receive buffers
 	struct addrinfo *res;
 	char recv_buf[100];
 	char content_buf[100];
-	
-	// resolve the IP of the target website
-	int result = getaddrinfo(CONFIG_WEBSITE, "80", &hints, &res);
-	if((result != 0) || (res == NULL)) {
-		printf("Unable to resolve IP for target website %s\n", CONFIG_WEBSITE);
-		while(1) vTaskDelay(1000 / portTICK_RATE_MS);
-	}
-	// printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
-	
 	char * pch;
+
+	BaseType_t xStatus;
+	xStatus = xQueueReceive(queue_wifi_tx_to_rx, &res, portMAX_DELAY);
 
 	// wait some initial time
 	vTaskDelay(5000 / portTICK_RATE_MS);

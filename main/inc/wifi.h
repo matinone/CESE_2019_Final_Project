@@ -33,7 +33,7 @@ void initialize_wifi();
 
 
 /*------------------------------------------------------------------
-|  Function: wifi_task
+|  Function: wifi_tx_task
 | ------------------------------------------------------------------
 |  Description: FreeRTOS task. It waits for the WiFi connection to
 |				be ready, resolves the IP of the target website
@@ -48,7 +48,7 @@ void initialize_wifi();
 |
 |  Returns:  void
 *-------------------------------------------------------------------*/
-void wifi_task(void *pvParameter);
+void wifi_tx_task(void *pvParameter);
 
 void wifi_rx_cmd_task(void * pvParameter);
 
