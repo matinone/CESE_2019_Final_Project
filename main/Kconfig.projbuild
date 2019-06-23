@@ -16,16 +16,4 @@ menu "WiFi/HTTP configuration"
 		help
 			Enter the address of the target website
 	
-	config HTTP_REQUEST_WRITE
-		string "HTTP request to write to ThingSpeak"
-		default "/"
-		help
-			Enter the HTTP request
-
-	config HTTP_REQUEST_READ
-		string "HTTP request to read from ThingSpeak"
-		default "/"
-		help
-			Enter the HTTP request
-	
 endmenu

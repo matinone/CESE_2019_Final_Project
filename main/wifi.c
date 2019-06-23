@@ -8,6 +8,7 @@
 
 /* ===== Dependencies ===== */
 #include "wifi.h"
+#include "thingspeak_http_request.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -29,17 +30,6 @@ extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
 const int CONNECTED_BIT = BIT0;
 static const char *TAG = "WIFI_TASK";
-
-// HTTP request
-char* REQUEST_WRITE = "GET "CONFIG_HTTP_REQUEST_WRITE" HTTP/1.1\r\n"
-	"Host: "CONFIG_WEBSITE"\r\n"
-	"User-Agent: ESP32\r\n"
-	"\r\n";
-
-char* REQUEST_READ = "GET "CONFIG_HTTP_REQUEST_READ" HTTP/1.1\r\n"
-	"Host: "CONFIG_WEBSITE"\r\n"
-	"User-Agent: ESP32\r\n"
-	"\r\n";
 
 /* ===== Prototypes of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
@@ -99,7 +89,7 @@ void wifi_task(void *pvParameter)
 	// address info struct and receive buffer
 	struct addrinfo *res;
 	char recv_buf[100];
-	// char content_buf[100];
+	char content_buf[100];
 	
 	// resolve the IP of the target website
 	int result = getaddrinfo(CONFIG_WEBSITE, "80", &hints, &res);
@@ -110,10 +100,9 @@ void wifi_task(void *pvParameter)
 	printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
 	
 	uint8_t queue_rcv_value;
-	char request_buffer[strlen(REQUEST_WRITE)];
+	char request_buffer[strlen(HTTP_REQUEST_READ_CMD)];	// HTTP_REQUEST_READ_CMD is the longest request
 	BaseType_t xStatus;
-	// char * pch;
-
+	char * pch;
 
 	while (1)
 	{
@@ -122,8 +111,16 @@ void wifi_task(void *pvParameter)
 		if (xStatus == pdPASS)
 		{
 			ESP_LOGI(TAG, "Received from I2C MASTER TASK: %c\n", queue_rcv_value);
-			sprintf(request_buffer, REQUEST_WRITE, queue_rcv_value);
-
+			
+			if (queue_rcv_value == 'R')
+			{
+				sprintf(request_buffer, HTTP_REQUEST_READ_CMD);	
+			}
+			else
+			{
+				sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
+			}
+			
 			// create a new socket
 			int s = socket(res->ai_family, res->ai_socktype, 0);
 			int request_status = send_http_request(s, res, request_buffer);
@@ -135,8 +132,9 @@ void wifi_task(void *pvParameter)
 			printf("Receiving HTTP response.\n");
 			int r;
 			int flag_rsp_ok = 0;
-			// int flag_content = 0;
-			// content_buf[0] = '\0';
+			int flag_content = 0;
+			content_buf[0] = '\0';
+			
 			do {
 				bzero(recv_buf, sizeof(recv_buf));
 				r = read(s, recv_buf, sizeof(recv_buf) - 1);
@@ -146,29 +144,44 @@ void wifi_task(void *pvParameter)
   					flag_rsp_ok = 1;
   				}
 
-  				// pch = strstr(recv_buf, "created_at");
-  				// if (pch != NULL || flag_content == 1)
-  				// {
-  				// 	if (pch != NULL)
-  				// 	{
-  				// 		strcat(content_buf, pch);
-  				// 	}
-  				// 	else
-  				// 	{
-  				// 		strcat(content_buf, recv_buf);
-  				// 	}
+  				pch = strstr(recv_buf, "\n\r\n");
+  				if (pch != NULL || flag_content == 1)
+  				{
+  					if (pch != NULL)
+  					{
+  						strcat(content_buf, pch+3);	// pch + 3 to ignore the LF+CR+LF
+  					}
+  					else
+  					{
+  						strcat(content_buf, recv_buf);
+  					}
   					
-  				// 	flag_content = 1;
-  				// }
+  					flag_content = 1;
+  				}
 
 			} while(r > 0);
 
-			// close socket
+			// close socket after receiving the response
 			close(s);
 
 			if (flag_rsp_ok == 1)
 			{
-				printf("HTTP response status OK.\n");
+				printf("\nHTTP response status OK.\n");
+				printf("Response Content: %s\n", content_buf);
+
+				if (queue_rcv_value == 'R')
+				{
+					pch = strstr(content_buf, "CMD_");
+					if (pch != NULL)
+					{
+						printf("Received new command: %s\n", content_buf);
+					}
+					else
+					{
+						printf("No new commands\n");
+					}
+				}
+				
 				// pch = strtok (content_buf,"\n,");
 				// while (pch != NULL && strcmp(pch, "\r") != 0)
 				// {
@@ -176,7 +189,8 @@ void wifi_task(void *pvParameter)
 				//  	pch = strtok (NULL, "\n,");
 				// }
 			}
-			else {
+			else 
+			{
 				printf("HTTP response status NOT OK.\n");
 			}
 

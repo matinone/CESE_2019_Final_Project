@@ -47,7 +47,7 @@ void app_main()
 	// therefore there is no need to use mutexes or any other synchronization method during printf calls
 
 	// create the wifi task with the highest priority (the http request should not be interrupted)
-	xTaskCreate(&wifi_task, "wifi_task", 2048, NULL, 5, NULL);
+	xTaskCreate(&wifi_task, "wifi_task", 2048 + 1024, NULL, 5, NULL);
 
 	// create the rest of the tasks with priority lower than wifi task
 	xTaskCreate(&echo_task, "echo_task", 2048, NULL, 4, NULL);
