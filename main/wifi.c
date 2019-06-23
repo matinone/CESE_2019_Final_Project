@@ -175,7 +175,7 @@ void wifi_tx_task(void *pvParameter)
 
 			if (flag_rsp_ok == 1)
 			{
-				printf("\nHTTP response status OK.\n");
+				printf("HTTP response status OK.\n");
 				printf("Response Content: %s\n", content_buf);
 
 				// pch = strtok (content_buf,"\n,");
@@ -190,7 +190,7 @@ void wifi_tx_task(void *pvParameter)
 				printf("HTTP response status NOT OK.\n");
 			}
 
-		}   // if (rcv_len > 0)
+		}   // xStatus == pdPASS
 		else 
 		{
 			// printf("Nothing received from ECHO Task.\n");
@@ -220,7 +220,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 
 	while (1)
 	{
-		printf("Checking if there is any new command to execute.\n");
+		printf("\nChecking if there is any new command to execute.\n");
 
 		// create a new socket
 		int s = socket(res->ai_family, res->ai_socktype, 0);
@@ -265,7 +265,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 
 		if (flag_rsp_ok == 1)
 		{
-			printf("\nHTTP response status OK.\n");
+			printf("HTTP response status OK.\n");
 			// printf("Response Content: %s\n", content_buf);
 
 			pch = strstr(content_buf, "CMD_");
@@ -275,7 +275,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 			}
 			else
 			{
-				printf("No new commands\n");
+				printf("No new commands.\n");
 			}
 		}
 		else 
@@ -315,11 +315,13 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 
 static int send_http_request(int socket_handler, struct addrinfo* res, char* http_request)
 {
+	printf("Sending HTTP request.\n");
+
 	if(socket_handler < 0) {
 		printf("Unable to allocate a new socket, not sending to ThingSpeak the received data.\n");
 		return -1;
 	}
-	printf("Socket allocated, id=%d.\n", socket_handler);
+	// printf("Socket allocated, id=%d.\n", socket_handler);
 
 	// set socket timeout to 1 second (1000000 us)
 	struct timeval timeout = {
@@ -328,7 +330,7 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 		};
 
 	lwip_setsockopt(socket_handler, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-	
+
 	// connect to the specified server
 	int con_result = connect(socket_handler, res->ai_addr, res->ai_addrlen);
 	if(con_result != 0) {
@@ -336,7 +338,7 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 		close(socket_handler);
 		return -1;
 	}
-	printf("Connected to the target website.\n");
+	// printf("Connected to the target website.\n");
 
 	// send the request
 	int result = write(socket_handler, http_request, strlen(http_request));
