@@ -34,7 +34,7 @@ void app_main()
 	esp_log_level_set("wifi", ESP_LOG_NONE);
 
 	// initialize NVS (Non Volatile Storage)
-	ESP_ERROR_CHECK(nvs_flash_init());
+	ESP_ERROR_CHECK(nvs_flash_init());	// restart system if this initialization fails
 	
 	initialize_wifi();
 	initialize_uart();
@@ -46,7 +46,7 @@ void app_main()
 	// printf is redirected to the UART and it is thread safe, 
 	// therefore there is no need to use mutexes or any other synchronization method during printf calls
 
-	// create the wifi task with the highest priority (the http request should not be interrupted)
+	// create wifi tasks with the highest priority (http requests should not be interrupted)
 	xTaskCreate(&wifi_task, "wifi_task", 2048, NULL, 5, NULL);
 	xTaskCreate(&wifi_rx_cmd_task, "wifi_rx_cmd_task", 2048, NULL, 5, NULL);
 
