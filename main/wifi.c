@@ -213,8 +213,10 @@ void wifi_rx_cmd_task(void * pvParameter)
 	char content_buf[100];
 	char * pch;
 
-	BaseType_t xStatus;
-	xStatus = xQueueReceive(queue_wifi_tx_to_rx, &res, portMAX_DELAY);
+	if (xQueueReceive(queue_wifi_tx_to_rx, &res, portMAX_DELAY) != pdTRUE)
+	{
+		printf("Error receiving target website IP resolution\n");
+	}
 
 	// wait some initial time
 	vTaskDelay(5000 / portTICK_RATE_MS);
