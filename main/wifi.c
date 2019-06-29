@@ -24,6 +24,7 @@
 #include "lwip/sockets.h"
 
 /* ===== Macros of private constants ===== */
+#define COMMAND_RX_CHECK_PERIOD 15000
 
 /* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_i2c_to_wifi;
@@ -282,7 +283,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 		{
 			printf("HTTP response status NOT OK.\n");
 		}
-		vTaskDelay(15000 / portTICK_RATE_MS);
+		vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS);
 	}
 }
 
