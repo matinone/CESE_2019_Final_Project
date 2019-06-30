@@ -37,12 +37,6 @@
 
 #define WEB_SERVER "www.thingspeak.com"
 #define WEB_PORT "443"
-#define WEB_URL "https://www.howsmyssl.com/a/check"
-
-// static const char* REQUEST = "GET " WEB_URL " HTTP/1.0\r\n"
-//     "Host: "WEB_SERVER"\r\n"
-//     "User-Agent: esp-idf/1.0 esp32\r\n"
-//     "\r\n";
 
 /* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_i2c_to_wifi;
@@ -66,11 +60,11 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 void initialize_wifi()
 {
 	// create a queue capable of containing a single pointer to struct addrinfo
-    // queue_wifi_tx_to_rx = xQueueCreate(1, sizeof(struct addrinfo *));
-    // if (queue_wifi_tx_to_rx == NULL)
-    // {
-    // 	printf("Could not create wifi_tx_to_rx QUEUE.\n");
-    // }
+    queue_wifi_tx_to_rx = xQueueCreate(1, sizeof(struct addrinfo *));
+    if (queue_wifi_tx_to_rx == NULL)
+    {
+    	printf("Could not create wifi_tx_to_rx QUEUE.\n");
+    }
 
 	// create the event group to handle wifi events
 	wifi_event_group = xEventGroupCreate();
@@ -387,7 +381,16 @@ void wifi_secure_tx_task(void *pvParameter)
 
             if(ret < 0)
             {
-                ESP_LOGE(TAG, "mbedtls_ssl_read returned -0x%x", -ret);
+                if (ret == -0x6800)
+                {
+                	printf("Expected timeout, not an error.\n");
+                	ret = 0;
+                }
+                else
+                {
+               		ESP_LOGE(TAG, "mbedtls_ssl_read returned -0x%x", -ret);
+                }
+
                 break;
             }
 
