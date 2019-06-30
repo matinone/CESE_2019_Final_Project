@@ -1,4 +1,4 @@
-menu "Example configuration"
+menu "WiFi/HTTP configuration"
 
 	config WIFI_SSID
 		string "WIFI Network SSID"
@@ -15,11 +15,5 @@ menu "Example configuration"
 		default "www.google.com"
 		help
 			Enter the address of the target website
-	
-	config RESOURCE
-		string "Website resource"
-		default "/"
-		help
-			Enter the resource URL
 	
 endmenu
