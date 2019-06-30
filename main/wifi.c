@@ -30,6 +30,7 @@
 extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
 
+static int connect_retry_num = 0;
 const int CONNECTED_BIT = BIT0;
 static const char *TAG = "WIFI_TASK";
 
@@ -154,6 +155,7 @@ void wifi_tx_task(void *pvParameter)
   					flag_rsp_ok = 1;
   				}
 
+  				// check if the CONTENT of the response arrived
   				pch = strstr(recv_buf, "\n\r\n");
   				if (pch != NULL || flag_content == 1)
   				{
@@ -301,10 +303,20 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 		break;
 	
 	case SYSTEM_EVENT_STA_GOT_IP:
+		connect_retry_num = 0;
 		xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
 		break;
 	
 	case SYSTEM_EVENT_STA_DISCONNECTED:
+		if (connect_retry_num < MAX_WIFI_CONNECT_RETRY)
+		{
+			printf("WiFi disconnected, trying to reconnect %d/%d.\n", connect_retry_num+1, MAX_WIFI_CONNECT_RETRY);
+			esp_wifi_connect();
+		}
+		else
+		{
+			printf("WiFi tried to reconnect %d times and failed. Not trying anymore.\n", MAX_WIFI_CONNECT_RETRY);
+		}
 		xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
 		break;
 	

@@ -13,6 +13,7 @@
 /* ===== Dependencies ===== */
 
 /* ===== Macros of public constants ===== */
+#define MAX_WIFI_CONNECT_RETRY 10
 
 /* ===== Public structs and enums ===== */
 
