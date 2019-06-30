@@ -53,6 +53,25 @@ void wifi_tx_task(void *pvParameter);
 
 
 /*------------------------------------------------------------------
+|  Function: wifi_secure_tx_task
+| ------------------------------------------------------------------
+|  Description: FreeRTOS task. It waits for the WiFi connection to
+|				be ready, resolves the IP of the target website
+|				and waits for data to be received from I2C master
+|				task. Once data arrives, it creates a TCP socket
+|				and sends and HTTP request to the website to
+|				publish the received data.
+|
+|  Parameters:
+|		- pvParameter: void pointer used as task parameter during
+|					   task creation.
+|
+|  Returns:  void
+*-------------------------------------------------------------------*/
+void wifi_secure_tx_task(void *pvParameter);
+
+
+/*------------------------------------------------------------------
 |  Function: wifi_rx_cmd_task
 | ------------------------------------------------------------------
 |  Description: FreeRTOS task. It waits for the target website IP

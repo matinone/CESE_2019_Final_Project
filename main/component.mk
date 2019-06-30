@@ -1,2 +1,4 @@
 
 COMPONENT_ADD_INCLUDEDIRS += ./inc
+
+COMPONENT_EMBED_TXTFILES := openssl_certificate.pem

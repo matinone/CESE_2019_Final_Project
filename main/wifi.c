@@ -30,6 +30,9 @@
 extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
 
+extern const uint8_t openssl_certificate_pem_start[] asm("_binary_openssl_certificate_pem_start");
+extern const uint8_t openssl_certificate_pem_end[]   asm("_binary_openssl_certificate_pem_end");
+
 static int connect_retry_num = 0;
 const int CONNECTED_BIT = BIT0;
 static const char *TAG = "WIFI_TASK";
@@ -201,6 +204,12 @@ void wifi_tx_task(void *pvParameter)
 
 		vTaskDelay(1000 / portTICK_RATE_MS);
 	}   // while(1)
+}
+
+
+void wifi_secure_tx_task(void *pvParameter)
+{
+
 }
 
 
