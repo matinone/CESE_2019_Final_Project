@@ -56,6 +56,75 @@ QueueHandle_t queue_wifi_tx_to_rx;
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
 static int send_http_request(int socket_handler, struct addrinfo* res, char* http_request);
 
+
+static int configure_tls(mbedtls_ssl_context* ssl_context, mbedtls_entropy_context* entropy,
+						mbedtls_ctr_drbg_context* ctr_drbg, mbedtls_x509_crt* cacert,
+						mbedtls_ssl_config* conf)
+{
+	int ret;
+	mbedtls_ssl_init(ssl_context);
+	mbedtls_x509_crt_init(cacert);
+	mbedtls_ctr_drbg_init(ctr_drbg);
+
+	mbedtls_ssl_config_init(conf);
+
+	// seed the random number generator
+	mbedtls_entropy_init(entropy);
+	ret = mbedtls_ctr_drbg_seed(ctr_drbg, mbedtls_entropy_func, entropy, NULL, 0);
+	if(ret != 0)
+	{
+		printf("mbedtls_ctr_drbg_seed returned %d", ret);
+		abort();
+	}
+
+	// load the CA root certificate
+	ret = mbedtls_x509_crt_parse(cacert, server_root_cert_pem_start,
+								 server_root_cert_pem_end-server_root_cert_pem_start);
+	if(ret < 0)
+	{
+		printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
+		abort();
+	}
+
+	// set hostname for TLS session (it should match CN in server certificate)
+	ret = mbedtls_ssl_set_hostname(ssl_context, WEB_SERVER);
+	if(ret != 0)
+	{
+		printf("mbedtls_ssl_set_hostname returned -0x%x", -ret);
+		abort();
+	}
+
+	// set up SSL/TLS structure
+	ret = mbedtls_ssl_config_defaults(conf, MBEDTLS_SSL_IS_CLIENT, 
+		MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
+	if(ret != 0)
+	{
+		printf("mbedtls_ssl_config_defaults returned %d", ret);
+		abort();
+	}
+
+	// set read/receive timeout to 1 second (1000 ms)
+	mbedtls_ssl_conf_read_timeout(conf, 1000);
+
+	/* MBEDTLS_SSL_VERIFY_OPTIONAL is bad for security, in this example it will print
+	   a warning if CA verification fails but it will continue to connect.
+	   You should consider using MBEDTLS_SSL_VERIFY_REQUIRED in your own code.
+	*/
+	mbedtls_ssl_conf_authmode(conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+	mbedtls_ssl_conf_ca_chain(conf, cacert, NULL);
+	mbedtls_ssl_conf_rng(conf, mbedtls_ctr_drbg_random, ctr_drbg);
+
+	ret = mbedtls_ssl_setup(ssl_context, conf);
+	if (ret != 0)
+	{
+		printf("mbedtls_ssl_setup returned -0x%x\n\n", -ret);
+		abort();
+	}
+
+	return ret;
+}
+
+
 /* ===== Implementations of public functions ===== */
 void initialize_wifi()
 {
@@ -226,75 +295,15 @@ void wifi_secure_tx_task(void *pvParameter)
 
 	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
-	mbedtls_ssl_context ssl;
 	mbedtls_x509_crt cacert;
 	mbedtls_ssl_config conf;
+	mbedtls_ssl_context ssl;
 	mbedtls_net_context server_fd;
 
-	mbedtls_ssl_init(&ssl);
-	mbedtls_x509_crt_init(&cacert);
-	mbedtls_ctr_drbg_init(&ctr_drbg);
-	ESP_LOGI(TAG, "Seeding the random number generator");
-
-	mbedtls_ssl_config_init(&conf);
-
-	mbedtls_entropy_init(&entropy);
-	if((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
-									NULL, 0)) != 0)
+	ret = configure_tls(&ssl, &entropy, &ctr_drbg, &cacert, &conf);
+	if (ret != 0)
 	{
-		ESP_LOGE(TAG, "mbedtls_ctr_drbg_seed returned %d", ret);
 		abort();
-	}
-
-	ESP_LOGI(TAG, "Loading the CA root certificate...");
-
-	ret = mbedtls_x509_crt_parse(&cacert, server_root_cert_pem_start,
-								 server_root_cert_pem_end-server_root_cert_pem_start);
-
-	if(ret < 0)
-	{
-		ESP_LOGE(TAG, "mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
-		abort();
-	}
-
-	ESP_LOGI(TAG, "Setting hostname for TLS session...");
-
-	 /* Hostname set here should match CN in server certificate */
-	if((ret = mbedtls_ssl_set_hostname(&ssl, WEB_SERVER)) != 0)
-	{
-		ESP_LOGE(TAG, "mbedtls_ssl_set_hostname returned -0x%x", -ret);
-		abort();
-	}
-
-	ESP_LOGI(TAG, "Setting up the SSL/TLS structure...");
-
-	if((ret = mbedtls_ssl_config_defaults(&conf,
-										  MBEDTLS_SSL_IS_CLIENT,
-										  MBEDTLS_SSL_TRANSPORT_STREAM,
-										  MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
-	{
-		ESP_LOGE(TAG, "mbedtls_ssl_config_defaults returned %d", ret);
-		goto exit;
-	}
-
-	mbedtls_ssl_conf_read_timeout(&conf, 1000);
-
-	/* MBEDTLS_SSL_VERIFY_OPTIONAL is bad for security, in this example it will print
-	   a warning if CA verification fails but it will continue to connect.
-
-	   You should consider using MBEDTLS_SSL_VERIFY_REQUIRED in your own code.
-	*/
-	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
-	mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
-	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
-#ifdef CONFIG_MBEDTLS_DEBUG
-	mbedtls_esp_enable_debug_log(&conf, 4);
-#endif
-
-	if ((ret = mbedtls_ssl_setup(&ssl, &conf)) != 0)
-	{
-		ESP_LOGE(TAG, "mbedtls_ssl_setup returned -0x%x\n\n", -ret);
-		goto exit;
 	}
 
 	while(1) {
