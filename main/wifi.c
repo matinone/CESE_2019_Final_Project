@@ -298,7 +298,7 @@ void wifi_secure_tx_task(void *pvParameter)
 	mbedtls_x509_crt cacert;
 	mbedtls_ssl_config conf;
 	mbedtls_ssl_context ssl;
-	mbedtls_net_context server_fd;
+	mbedtls_net_context server_fd;	// it has a single element of type int (the socket handler) named fd
 
 	ret = configure_tls(&ssl, &entropy, &ctr_drbg, &cacert, &conf);
 	if (ret != 0)
@@ -307,12 +307,8 @@ void wifi_secure_tx_task(void *pvParameter)
 	}
 
 	while(1) {
-		/* Wait for the callback to set the CONNECTED_BIT in the
-		   event group.
-		*/
-		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
-							false, true, portMAX_DELAY);
-		ESP_LOGI(TAG, "Connected to AP");
+		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+		printf("WiFi successfully connected.\n\n");
 
 		mbedtls_net_init(&server_fd);
 
