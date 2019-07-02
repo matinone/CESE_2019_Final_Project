@@ -379,7 +379,7 @@ void wifi_secure_tx_task(void *pvParameter)
 			{
 				if (ret == -0x6800)
 				{
-					printf("Expected timeout, not an error.\n");
+					printf("This is an expected timeout (not an error).\n");
 					ret = 0;
 				}
 				else
