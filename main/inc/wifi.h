@@ -11,11 +11,39 @@
 #define __WIFI_H__
 
 /* ===== Dependencies ===== */
+#include "mbedtls/net_sockets.h"
+#include "mbedtls/ssl.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
+
 
 /* ===== Macros of public constants ===== */
 #define MAX_WIFI_CONNECT_RETRY 10
 
 /* ===== Public structs and enums ===== */
+/*------------------------------------------------------------------
+|  Struct: mbedtls_connection_handler_t
+| ------------------------------------------------------------------
+|  Description: 
+|
+|  Members:
+|		entropy 	- 
+|		ctr_drbg 	- 
+|		cacert 		- 
+|		conf 		- 
+|		ssl 		- 
+|		server_fd 	- 
+*-------------------------------------------------------------------*/
+typedef struct {
+	mbedtls_entropy_context 	entropy;
+	mbedtls_ctr_drbg_context 	ctr_drbg;
+	mbedtls_x509_crt 			cacert;
+	mbedtls_ssl_config 			conf;
+	mbedtls_ssl_context 		ssl;
+	mbedtls_net_context 		server_fd;
+}	mbedtls_connection_handler_t;
+
+
 
 /* ===== Prototypes of public functions ===== */
 

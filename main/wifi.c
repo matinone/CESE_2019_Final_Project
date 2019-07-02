@@ -24,11 +24,7 @@
 #include "lwip/sockets.h"
 
 #include "mbedtls/platform.h"
-#include "mbedtls/net_sockets.h"
 #include "mbedtls/esp_debug.h"
-#include "mbedtls/ssl.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
 #include "mbedtls/error.h"
 #include "mbedtls/certs.h"
 
@@ -57,20 +53,19 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
 static int send_http_request(int socket_handler, struct addrinfo* res, char* http_request);
 
 
-static int configure_tls(mbedtls_ssl_context* ssl_context, mbedtls_entropy_context* entropy,
-						mbedtls_ctr_drbg_context* ctr_drbg, mbedtls_x509_crt* cacert,
-						mbedtls_ssl_config* conf)
+static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler)
 {
 	int ret;
-	mbedtls_ssl_init(ssl_context);
-	mbedtls_x509_crt_init(cacert);
-	mbedtls_ctr_drbg_init(ctr_drbg);
+	mbedtls_ssl_init(&mbedtls_handler->ssl);
+	mbedtls_x509_crt_init(&mbedtls_handler->cacert);
+	mbedtls_ctr_drbg_init(&mbedtls_handler->ctr_drbg);
 
-	mbedtls_ssl_config_init(conf);
+	mbedtls_ssl_config_init(&mbedtls_handler->conf);
 
 	// seed the random number generator
-	mbedtls_entropy_init(entropy);
-	ret = mbedtls_ctr_drbg_seed(ctr_drbg, mbedtls_entropy_func, entropy, NULL, 0);
+	mbedtls_entropy_init(&mbedtls_handler->entropy);
+	ret = mbedtls_ctr_drbg_seed(&mbedtls_handler->ctr_drbg, mbedtls_entropy_func, 
+								&mbedtls_handler->entropy, NULL, 0);
 	if(ret != 0)
 	{
 		printf("mbedtls_ctr_drbg_seed returned %d", ret);
@@ -78,7 +73,7 @@ static int configure_tls(mbedtls_ssl_context* ssl_context, mbedtls_entropy_conte
 	}
 
 	// load the CA root certificate
-	ret = mbedtls_x509_crt_parse(cacert, server_root_cert_pem_start,
+	ret = mbedtls_x509_crt_parse(&mbedtls_handler->cacert, server_root_cert_pem_start,
 								 server_root_cert_pem_end-server_root_cert_pem_start);
 	if(ret < 0)
 	{
@@ -87,7 +82,7 @@ static int configure_tls(mbedtls_ssl_context* ssl_context, mbedtls_entropy_conte
 	}
 
 	// set hostname for TLS session (it should match CN in server certificate)
-	ret = mbedtls_ssl_set_hostname(ssl_context, WEB_SERVER);
+	ret = mbedtls_ssl_set_hostname(&mbedtls_handler->ssl, WEB_SERVER);
 	if(ret != 0)
 	{
 		printf("mbedtls_ssl_set_hostname returned -0x%x", -ret);
@@ -95,7 +90,7 @@ static int configure_tls(mbedtls_ssl_context* ssl_context, mbedtls_entropy_conte
 	}
 
 	// set up SSL/TLS structure
-	ret = mbedtls_ssl_config_defaults(conf, MBEDTLS_SSL_IS_CLIENT, 
+	ret = mbedtls_ssl_config_defaults(&mbedtls_handler->conf, MBEDTLS_SSL_IS_CLIENT, 
 		MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
 	if(ret != 0)
 	{
@@ -104,17 +99,17 @@ static int configure_tls(mbedtls_ssl_context* ssl_context, mbedtls_entropy_conte
 	}
 
 	// set read/receive timeout to 1 second (1000 ms)
-	mbedtls_ssl_conf_read_timeout(conf, 1000);
+	mbedtls_ssl_conf_read_timeout(&mbedtls_handler->conf, 1000);
 
 	/* MBEDTLS_SSL_VERIFY_OPTIONAL is bad for security, in this example it will print
 	   a warning if CA verification fails but it will continue to connect.
 	   You should consider using MBEDTLS_SSL_VERIFY_REQUIRED in your own code.
 	*/
-	mbedtls_ssl_conf_authmode(conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
-	mbedtls_ssl_conf_ca_chain(conf, cacert, NULL);
-	mbedtls_ssl_conf_rng(conf, mbedtls_ctr_drbg_random, ctr_drbg);
+	mbedtls_ssl_conf_authmode(&mbedtls_handler->conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+	mbedtls_ssl_conf_ca_chain(&mbedtls_handler->conf, &mbedtls_handler->cacert, NULL);
+	mbedtls_ssl_conf_rng(&mbedtls_handler->conf, mbedtls_ctr_drbg_random, &mbedtls_handler->ctr_drbg);
 
-	ret = mbedtls_ssl_setup(ssl_context, conf);
+	ret = mbedtls_ssl_setup(&mbedtls_handler->ssl, &mbedtls_handler->conf);
 	if (ret != 0)
 	{
 		printf("mbedtls_ssl_setup returned -0x%x\n\n", -ret);
@@ -293,14 +288,10 @@ void wifi_secure_tx_task(void *pvParameter)
 	char buf[512];
 	int ret, flags, len;
 
-	mbedtls_entropy_context entropy;
-	mbedtls_ctr_drbg_context ctr_drbg;
-	mbedtls_x509_crt cacert;
-	mbedtls_ssl_config conf;
-	mbedtls_ssl_context ssl;
-	mbedtls_net_context server_fd;	// it has a single element of type int (the socket handler) named fd
+	mbedtls_connection_handler_t mbedtls_handler;
+	// mbedtls_net_context server_fd;	// it has a single element of type int (the socket handler) named fd
 
-	ret = configure_tls(&ssl, &entropy, &ctr_drbg, &cacert, &conf);
+	ret = configure_tls(&mbedtls_handler);
 	if (ret != 0)
 	{
 		abort();
@@ -310,11 +301,11 @@ void wifi_secure_tx_task(void *pvParameter)
 		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 		printf("WiFi successfully connected.\n\n");
 
-		mbedtls_net_init(&server_fd);
+		mbedtls_net_init(&mbedtls_handler.server_fd);
 
 		ESP_LOGI(TAG, "Connecting to %s:%s...", WEB_SERVER, WEB_PORT);
 
-		if ((ret = mbedtls_net_connect(&server_fd, WEB_SERVER,
+		if ((ret = mbedtls_net_connect(&mbedtls_handler.server_fd, WEB_SERVER,
 									  WEB_PORT, MBEDTLS_NET_PROTO_TCP)) != 0)
 		{
 			ESP_LOGE(TAG, "mbedtls_net_connect returned -%x", -ret);
@@ -323,11 +314,11 @@ void wifi_secure_tx_task(void *pvParameter)
 
 		ESP_LOGI(TAG, "Connected.");
 
-		mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
+		mbedtls_ssl_set_bio(&mbedtls_handler.ssl, &mbedtls_handler.server_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
 
 		ESP_LOGI(TAG, "Performing the SSL/TLS handshake...");
 
-		while ((ret = mbedtls_ssl_handshake(&ssl)) != 0)
+		while ((ret = mbedtls_ssl_handshake(&mbedtls_handler.ssl)) != 0)
 		{
 			if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
 			{
@@ -338,7 +329,7 @@ void wifi_secure_tx_task(void *pvParameter)
 
 		ESP_LOGI(TAG, "Verifying peer X.509 certificate...");
 
-		if ((flags = mbedtls_ssl_get_verify_result(&ssl)) != 0)
+		if ((flags = mbedtls_ssl_get_verify_result(&mbedtls_handler.ssl)) != 0)
 		{
 			/* In real life, we probably want to close connection if ret != 0 */
 			ESP_LOGW(TAG, "Failed to verify peer certificate!");
@@ -350,13 +341,13 @@ void wifi_secure_tx_task(void *pvParameter)
 			ESP_LOGI(TAG, "Certificate verified.");
 		}
 
-		ESP_LOGI(TAG, "Cipher suite is %s", mbedtls_ssl_get_ciphersuite(&ssl));
+		ESP_LOGI(TAG, "Cipher suite is %s", mbedtls_ssl_get_ciphersuite(&mbedtls_handler.ssl));
 
 		ESP_LOGI(TAG, "Writing HTTP request...");
 
 		size_t written_bytes = 0;
 		do {
-			ret = mbedtls_ssl_write(&ssl,
+			ret = mbedtls_ssl_write(&mbedtls_handler.ssl,
 									(const unsigned char *)REQUEST + written_bytes,
 									strlen(REQUEST) - written_bytes);
 			if (ret >= 0) {
@@ -374,7 +365,7 @@ void wifi_secure_tx_task(void *pvParameter)
 		{
 			len = sizeof(buf) - 1;
 			bzero(buf, sizeof(buf));
-			ret = mbedtls_ssl_read(&ssl, (unsigned char *)buf, len);
+			ret = mbedtls_ssl_read(&mbedtls_handler.ssl, (unsigned char *)buf, len);
 
 			if(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
 				continue;
@@ -413,11 +404,11 @@ void wifi_secure_tx_task(void *pvParameter)
 			}
 		} while(1);
 
-		mbedtls_ssl_close_notify(&ssl);
+		mbedtls_ssl_close_notify(&mbedtls_handler.ssl);
 
 	exit:
-		mbedtls_ssl_session_reset(&ssl);
-		mbedtls_net_free(&server_fd);
+		mbedtls_ssl_session_reset(&mbedtls_handler.ssl);
+		mbedtls_net_free(&mbedtls_handler.server_fd);
 
 		if(ret != 0)
 		{
