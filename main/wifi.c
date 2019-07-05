@@ -177,7 +177,7 @@ static int send_tls_http_request(mbedtls_connection_handler_t* mbedtls_handler, 
 								strlen(http_request) - written_bytes);
 		if (ret_value >= 0) 
 		{
-			printf("%d bytes written", ret_value);
+			printf("%d bytes written\n", ret_value);
 			written_bytes += ret_value;
 		} 
 		else if (ret_value != MBEDTLS_ERR_SSL_WANT_WRITE && ret_value != MBEDTLS_ERR_SSL_WANT_READ) 
@@ -356,8 +356,12 @@ void wifi_tx_task(void *pvParameter)
 
 void wifi_secure_tx_task(void *pvParameter)
 {
-	char buf[512];
-	int ret, flags, len;
+	char recv_buf[256];
+	char content_buf[100];
+	int ret, len;
+
+	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+	printf("WiFi successfully connected.\n\n");
 
 	mbedtls_connection_handler_t mbedtls_handler;
 	// mbedtls_net_context server_fd;	// it has a single element of type int (the socket handler) named fd
@@ -368,82 +372,118 @@ void wifi_secure_tx_task(void *pvParameter)
 		abort();
 	}
 
+	BaseType_t xStatus;
+	uint8_t queue_rcv_value;
+	char request_buffer[strlen(HTTP_REQUEST_WRITE)];
+	char * pch;
+
 	while(1) {
-		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
-		printf("WiFi successfully connected.\n\n");
-
-		ret = send_tls_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, REQUEST);
-		if (ret != 0)
+		// Read data from the queue
+		xStatus = xQueueReceive( queue_i2c_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
+		if (xStatus == pdPASS)
 		{
-			goto exit;
-		}
+			ESP_LOGI(TAG, "Received from I2C MASTER TASK: %c\n", queue_rcv_value);
+			sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
 
-		ESP_LOGI(TAG, "Reading HTTP response...");
-		do
-		{
-			len = sizeof(buf) - 1;
-			bzero(buf, sizeof(buf));
-			ret = mbedtls_ssl_read(&mbedtls_handler.ssl, (unsigned char *)buf, len);
-
-			if(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
-				continue;
-
-			if(ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-				ret = 0;
-				break;
+			ret = send_tls_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, request_buffer);
+			if (ret != 0)
+			{
+				goto exit;
 			}
 
-			if(ret < 0)
+			ESP_LOGI(TAG, "Receiving HTTP response.\n");
+			int flag_rsp_ok = 0;
+			int flag_content = 0;
+			content_buf[0] = '\0';
+			do
 			{
-				if (ret == -0x6800)
-				{
-					printf("This is an expected timeout (not an error).\n");
+				len = sizeof(recv_buf) - 1;
+				bzero(recv_buf, sizeof(recv_buf));
+				ret = mbedtls_ssl_read(&mbedtls_handler.ssl, (unsigned char *)recv_buf, len);
+
+				if(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
+					continue;
+
+				if(ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 					ret = 0;
+					break;
 				}
-				else
+
+				if(ret < 0)
 				{
-					ESP_LOGE(TAG, "mbedtls_ssl_read returned -0x%x", -ret);
+					if (ret == -0x6800)
+					{
+						printf("This is an expected timeout (not an error).\n");
+						ret = 0;
+					}
+					else
+					{
+						ESP_LOGE(TAG, "mbedtls_ssl_read returned -0x%x", -ret);
+					}
+
+					break;
 				}
 
-				break;
-			}
+				if(ret == 0)
+				{
+					ESP_LOGI(TAG, "connection closed");
+					break;
+				}
 
-			if(ret == 0)
+				len = ret;
+				ESP_LOGD(TAG, "%d bytes read\n", len);
+				/* Print response directly to stdout as it is read */
+				// for(int i = 0; i < len; i++) {
+				// 	putchar(recv_buf[i]);
+				// }
+
+				if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
+				{
+					flag_rsp_ok = 1;
+				}
+
+				pch = strstr(recv_buf, "\n\r\n");
+				if (pch != NULL || flag_content == 1)
+				{
+					if (pch != NULL)
+					{
+						strcat(content_buf, pch+3);	// pch + 3 to ignore the LF+CR+LF
+					}
+					else
+					{
+						strcat(content_buf, recv_buf);
+					}
+					
+					flag_content = 1;
+				}
+			} while(1);
+
+			mbedtls_ssl_close_notify(&mbedtls_handler.ssl);
+
+			if (flag_rsp_ok == 1)
 			{
-				ESP_LOGI(TAG, "connection closed");
-				break;
+				printf("HTTP response status OK.\n");
+				printf("Response Content: %s\n", content_buf);
+			}
+			else 
+			{
+				printf("HTTP response status NOT OK.\n");
 			}
 
-			len = ret;
-			ESP_LOGD(TAG, "%d bytes read", len);
-			/* Print response directly to stdout as it is read */
-			for(int i = 0; i < len; i++) {
-				putchar(buf[i]);
+		exit:
+			mbedtls_ssl_session_reset(&mbedtls_handler.ssl);
+			mbedtls_net_free(&mbedtls_handler.server_fd);
+
+			if(ret != 0)
+			{
+				mbedtls_strerror(ret, recv_buf, 100);
+				ESP_LOGE(TAG, "Last error was: -0x%x - %s", -ret, recv_buf);
 			}
-		} while(1);
 
-		mbedtls_ssl_close_notify(&mbedtls_handler.ssl);
-
-	exit:
-		mbedtls_ssl_session_reset(&mbedtls_handler.ssl);
-		mbedtls_net_free(&mbedtls_handler.server_fd);
-
-		if(ret != 0)
-		{
-			mbedtls_strerror(ret, buf, 100);
-			ESP_LOGE(TAG, "Last error was: -0x%x - %s", -ret, buf);
+			putchar('\n'); // JSON output doesn't have a newline at end
 		}
 
-		putchar('\n'); // JSON output doesn't have a newline at end
-
-		static int request_count;
-		ESP_LOGI(TAG, "Completed %d requests", ++request_count);
-
-		for(int countdown = 10; countdown >= 0; countdown--) {
-			ESP_LOGI(TAG, "%d...", countdown);
-			vTaskDelay(1000 / portTICK_PERIOD_MS);
-		}
-		ESP_LOGI(TAG, "Starting again!");
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
 }
 
