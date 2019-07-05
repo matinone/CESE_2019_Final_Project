@@ -123,6 +123,74 @@ static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler)
 }
 
 
+static int send_tls_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request)
+{
+	int ret_value, flags;
+	char cert_info[100];
+
+	mbedtls_net_init(&mbedtls_handler->server_fd);
+
+	printf("Connecting to %s:%s.\n", server, port);
+	ret_value = mbedtls_net_connect(&mbedtls_handler->server_fd, server,
+									port, MBEDTLS_NET_PROTO_TCP);
+	if (ret_value != 0)
+	{
+		printf("mbedtls_net_connect returned -%x", -ret_value);
+		return ret_value;
+	}
+	printf("Connected.\n");
+
+	mbedtls_ssl_set_bio(&mbedtls_handler->ssl, &mbedtls_handler->server_fd, 
+						mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
+
+	printf("Performing the SSL/TLS handshake.\n");
+	while ((ret_value = mbedtls_ssl_handshake(&mbedtls_handler->ssl)) != 0)
+	{
+		if (ret_value != MBEDTLS_ERR_SSL_WANT_READ && ret_value != MBEDTLS_ERR_SSL_WANT_WRITE)
+		{
+			printf("mbedtls_ssl_handshake returned -0x%x", -ret_value);
+			return ret_value;
+		}
+	}
+
+	printf("Verifying peer X.509 certificate.\n");
+	flags = mbedtls_ssl_get_verify_result(&mbedtls_handler->ssl);
+	// we should close the connection if it does not return 0
+	if (flags != 0)
+	{
+		printf("Failed to verify peer certificate.\n");
+		bzero(cert_info, sizeof(cert_info));
+		mbedtls_x509_crt_verify_info(cert_info, sizeof(cert_info), "  ! ", flags);
+		printf("Verification info: %s.\n", cert_info);
+	}
+	else
+	{
+		printf("Certificate verified.\n");
+	}
+	printf("Cipher suite is %s.\n", mbedtls_ssl_get_ciphersuite(&mbedtls_handler->ssl));
+
+	printf("Writing HTTP request.\n");
+	size_t written_bytes = 0;
+	do {
+		ret_value = mbedtls_ssl_write(&mbedtls_handler->ssl,
+								(const unsigned char *)http_request + written_bytes,
+								strlen(http_request) - written_bytes);
+		if (ret_value >= 0) 
+		{
+			printf("%d bytes written", ret_value);
+			written_bytes += ret_value;
+		} 
+		else if (ret_value != MBEDTLS_ERR_SSL_WANT_WRITE && ret_value != MBEDTLS_ERR_SSL_WANT_READ) 
+		{
+			printf("mbedtls_ssl_write returned -0x%x", -ret_value);
+			return ret_value;
+		}
+	} while(written_bytes < strlen(http_request));
+
+	return 0;
+}
+
+
 /* ===== Implementations of public functions ===== */
 void initialize_wifi()
 {
@@ -304,66 +372,13 @@ void wifi_secure_tx_task(void *pvParameter)
 		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 		printf("WiFi successfully connected.\n\n");
 
-		mbedtls_net_init(&mbedtls_handler.server_fd);
-
-		ESP_LOGI(TAG, "Connecting to %s:%s...", WEB_SERVER, WEB_PORT);
-
-		if ((ret = mbedtls_net_connect(&mbedtls_handler.server_fd, WEB_SERVER,
-									  WEB_PORT, MBEDTLS_NET_PROTO_TCP)) != 0)
+		ret = send_tls_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, REQUEST);
+		if (ret != 0)
 		{
-			ESP_LOGE(TAG, "mbedtls_net_connect returned -%x", -ret);
 			goto exit;
 		}
 
-		ESP_LOGI(TAG, "Connected.");
-
-		mbedtls_ssl_set_bio(&mbedtls_handler.ssl, &mbedtls_handler.server_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
-
-		ESP_LOGI(TAG, "Performing the SSL/TLS handshake...");
-
-		while ((ret = mbedtls_ssl_handshake(&mbedtls_handler.ssl)) != 0)
-		{
-			if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
-			{
-				ESP_LOGE(TAG, "mbedtls_ssl_handshake returned -0x%x", -ret);
-				goto exit;
-			}
-		}
-
-		ESP_LOGI(TAG, "Verifying peer X.509 certificate...");
-
-		if ((flags = mbedtls_ssl_get_verify_result(&mbedtls_handler.ssl)) != 0)
-		{
-			/* In real life, we probably want to close connection if ret != 0 */
-			ESP_LOGW(TAG, "Failed to verify peer certificate!");
-			bzero(buf, sizeof(buf));
-			mbedtls_x509_crt_verify_info(buf, sizeof(buf), "  ! ", flags);
-			ESP_LOGW(TAG, "verification info: %s", buf);
-		}
-		else {
-			ESP_LOGI(TAG, "Certificate verified.");
-		}
-
-		ESP_LOGI(TAG, "Cipher suite is %s", mbedtls_ssl_get_ciphersuite(&mbedtls_handler.ssl));
-
-		ESP_LOGI(TAG, "Writing HTTP request...");
-
-		size_t written_bytes = 0;
-		do {
-			ret = mbedtls_ssl_write(&mbedtls_handler.ssl,
-									(const unsigned char *)REQUEST + written_bytes,
-									strlen(REQUEST) - written_bytes);
-			if (ret >= 0) {
-				ESP_LOGI(TAG, "%d bytes written", ret);
-				written_bytes += ret;
-			} else if (ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_WANT_READ) {
-				ESP_LOGE(TAG, "mbedtls_ssl_write returned -0x%x", -ret);
-				goto exit;
-			}
-		} while(written_bytes < strlen(REQUEST));
-
 		ESP_LOGI(TAG, "Reading HTTP response...");
-
 		do
 		{
 			len = sizeof(buf) - 1;
