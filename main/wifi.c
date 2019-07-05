@@ -38,6 +38,9 @@
 extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
 
+// the PEM file was extracted from the output of this command:
+// openssl s_client -showcerts -connect www.thingspeak.com:443 </dev/null
+// the CA root cert is the last certificate given in the chain of certs
 extern const uint8_t server_root_cert_pem_start[] asm("_binary_openssl_certificate_pem_start");
 extern const uint8_t server_root_cert_pem_end[]   asm("_binary_openssl_certificate_pem_end");
 
