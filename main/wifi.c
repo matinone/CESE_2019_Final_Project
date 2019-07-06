@@ -54,141 +54,8 @@ QueueHandle_t queue_wifi_tx_to_rx;
 /* ===== Prototypes of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
 static int send_http_request(int socket_handler, struct addrinfo* res, char* http_request);
-
-
-static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler)
-{
-	int ret;
-	mbedtls_ssl_init(&mbedtls_handler->ssl);
-	mbedtls_x509_crt_init(&mbedtls_handler->cacert);
-	mbedtls_ctr_drbg_init(&mbedtls_handler->ctr_drbg);
-
-	mbedtls_ssl_config_init(&mbedtls_handler->conf);
-
-	// seed the random number generator
-	mbedtls_entropy_init(&mbedtls_handler->entropy);
-	ret = mbedtls_ctr_drbg_seed(&mbedtls_handler->ctr_drbg, mbedtls_entropy_func, 
-								&mbedtls_handler->entropy, NULL, 0);
-	if(ret != 0)
-	{
-		printf("mbedtls_ctr_drbg_seed returned %d", ret);
-		abort();
-	}
-
-	// load the CA root certificate
-	ret = mbedtls_x509_crt_parse(&mbedtls_handler->cacert, server_root_cert_pem_start,
-								 server_root_cert_pem_end-server_root_cert_pem_start);
-	if(ret < 0)
-	{
-		printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
-		abort();
-	}
-
-	// set hostname for TLS session (it should match CN in server certificate)
-	ret = mbedtls_ssl_set_hostname(&mbedtls_handler->ssl, WEB_SERVER);
-	if(ret != 0)
-	{
-		printf("mbedtls_ssl_set_hostname returned -0x%x", -ret);
-		abort();
-	}
-
-	// set up SSL/TLS structure
-	ret = mbedtls_ssl_config_defaults(&mbedtls_handler->conf, MBEDTLS_SSL_IS_CLIENT, 
-		MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
-	if(ret != 0)
-	{
-		printf("mbedtls_ssl_config_defaults returned %d", ret);
-		abort();
-	}
-
-	// set read/receive timeout to 1 second (1000 ms)
-	mbedtls_ssl_conf_read_timeout(&mbedtls_handler->conf, 1000);
-
-	/* MBEDTLS_SSL_VERIFY_OPTIONAL is bad for security, in this example it will print
-	   a warning if CA verification fails but it will continue to connect.
-	   You should consider using MBEDTLS_SSL_VERIFY_REQUIRED in your own code.
-	*/
-	mbedtls_ssl_conf_authmode(&mbedtls_handler->conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
-	mbedtls_ssl_conf_ca_chain(&mbedtls_handler->conf, &mbedtls_handler->cacert, NULL);
-	mbedtls_ssl_conf_rng(&mbedtls_handler->conf, mbedtls_ctr_drbg_random, &mbedtls_handler->ctr_drbg);
-
-	ret = mbedtls_ssl_setup(&mbedtls_handler->ssl, &mbedtls_handler->conf);
-	if (ret != 0)
-	{
-		printf("mbedtls_ssl_setup returned -0x%x\n\n", -ret);
-		abort();
-	}
-
-	return ret;
-}
-
-
-static int send_tls_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request)
-{
-	int ret_value, flags;
-	char cert_info[100];
-
-	mbedtls_net_init(&mbedtls_handler->server_fd);
-
-	printf("Connecting to %s:%s.\n", server, port);
-	ret_value = mbedtls_net_connect(&mbedtls_handler->server_fd, server,
-									port, MBEDTLS_NET_PROTO_TCP);
-	if (ret_value != 0)
-	{
-		printf("mbedtls_net_connect returned -%x", -ret_value);
-		return ret_value;
-	}
-	printf("Connected.\n");
-
-	mbedtls_ssl_set_bio(&mbedtls_handler->ssl, &mbedtls_handler->server_fd, 
-						mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
-
-	printf("Performing the SSL/TLS handshake.\n");
-	while ((ret_value = mbedtls_ssl_handshake(&mbedtls_handler->ssl)) != 0)
-	{
-		if (ret_value != MBEDTLS_ERR_SSL_WANT_READ && ret_value != MBEDTLS_ERR_SSL_WANT_WRITE)
-		{
-			printf("mbedtls_ssl_handshake returned -0x%x", -ret_value);
-			return ret_value;
-		}
-	}
-
-	printf("Verifying peer X.509 certificate.\n");
-	flags = mbedtls_ssl_get_verify_result(&mbedtls_handler->ssl);
-	// we should close the connection if it does not return 0
-	if (flags != 0)
-	{
-		printf("Failed to verify peer certificate.\n");
-		bzero(cert_info, sizeof(cert_info));
-		mbedtls_x509_crt_verify_info(cert_info, sizeof(cert_info), "  ! ", flags);
-		printf("Verification info: %s.\n", cert_info);
-	}
-	else
-	{
-		printf("Certificate verified.\n");
-	}
-	printf("Cipher suite is %s.\n", mbedtls_ssl_get_ciphersuite(&mbedtls_handler->ssl));
-
-	printf("Writing HTTP request.\n");
-	size_t written_bytes = 0;
-	do {
-		ret_value = mbedtls_ssl_write(&mbedtls_handler->ssl,
-								(const unsigned char *)http_request + written_bytes,
-								strlen(http_request) - written_bytes);
-		if (ret_value >= 0) 
-		{
-			printf("%d bytes written\n", ret_value);
-			written_bytes += ret_value;
-		} 
-		else if (ret_value != MBEDTLS_ERR_SSL_WANT_WRITE && ret_value != MBEDTLS_ERR_SSL_WANT_READ) 
-		{
-			printf("mbedtls_ssl_write returned -0x%x", -ret_value);
-			return ret_value;
-		}
-	} while(written_bytes < strlen(http_request));
-
-	return 0;
-}
+static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler);
+static int send_tls_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request);
 
 
 /* ===== Implementations of public functions ===== */
@@ -648,6 +515,141 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 	}
 	// printf("HTTP request sent:  %s\n", http_request);
 	printf("HTTP request sent.\n");
+
+	return 0;
+}
+
+
+static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler)
+{
+	int ret;
+	mbedtls_ssl_init(&mbedtls_handler->ssl);
+	mbedtls_x509_crt_init(&mbedtls_handler->cacert);
+	mbedtls_ctr_drbg_init(&mbedtls_handler->ctr_drbg);
+
+	mbedtls_ssl_config_init(&mbedtls_handler->conf);
+
+	// seed the random number generator
+	mbedtls_entropy_init(&mbedtls_handler->entropy);
+	ret = mbedtls_ctr_drbg_seed(&mbedtls_handler->ctr_drbg, mbedtls_entropy_func, 
+								&mbedtls_handler->entropy, NULL, 0);
+	if(ret != 0)
+	{
+		printf("mbedtls_ctr_drbg_seed returned %d", ret);
+		abort();
+	}
+
+	// load the CA root certificate
+	ret = mbedtls_x509_crt_parse(&mbedtls_handler->cacert, server_root_cert_pem_start,
+								 server_root_cert_pem_end-server_root_cert_pem_start);
+	if(ret < 0)
+	{
+		printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
+		abort();
+	}
+
+	// set hostname for TLS session (it should match CN in server certificate)
+	ret = mbedtls_ssl_set_hostname(&mbedtls_handler->ssl, WEB_SERVER);
+	if(ret != 0)
+	{
+		printf("mbedtls_ssl_set_hostname returned -0x%x", -ret);
+		abort();
+	}
+
+	// set up SSL/TLS structure
+	ret = mbedtls_ssl_config_defaults(&mbedtls_handler->conf, MBEDTLS_SSL_IS_CLIENT, 
+		MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
+	if(ret != 0)
+	{
+		printf("mbedtls_ssl_config_defaults returned %d", ret);
+		abort();
+	}
+
+	// set read/receive timeout to 1 second (1000 ms)
+	mbedtls_ssl_conf_read_timeout(&mbedtls_handler->conf, 1000);
+
+	/* MBEDTLS_SSL_VERIFY_OPTIONAL is bad for security, in this example it will print
+	   a warning if CA verification fails but it will continue to connect.
+	   You should consider using MBEDTLS_SSL_VERIFY_REQUIRED in your own code.
+	*/
+	mbedtls_ssl_conf_authmode(&mbedtls_handler->conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+	mbedtls_ssl_conf_ca_chain(&mbedtls_handler->conf, &mbedtls_handler->cacert, NULL);
+	mbedtls_ssl_conf_rng(&mbedtls_handler->conf, mbedtls_ctr_drbg_random, &mbedtls_handler->ctr_drbg);
+
+	ret = mbedtls_ssl_setup(&mbedtls_handler->ssl, &mbedtls_handler->conf);
+	if (ret != 0)
+	{
+		printf("mbedtls_ssl_setup returned -0x%x\n\n", -ret);
+		abort();
+	}
+
+	return ret;
+}
+
+
+static int send_tls_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request)
+{
+	int ret_value, flags;
+	char cert_info[100];
+
+	mbedtls_net_init(&mbedtls_handler->server_fd);
+
+	printf("Connecting to %s:%s.\n", server, port);
+	ret_value = mbedtls_net_connect(&mbedtls_handler->server_fd, server,
+									port, MBEDTLS_NET_PROTO_TCP);
+	if (ret_value != 0)
+	{
+		printf("mbedtls_net_connect returned -%x", -ret_value);
+		return ret_value;
+	}
+	printf("Connected.\n");
+
+	mbedtls_ssl_set_bio(&mbedtls_handler->ssl, &mbedtls_handler->server_fd, 
+						mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
+
+	printf("Performing the SSL/TLS handshake.\n");
+	while ((ret_value = mbedtls_ssl_handshake(&mbedtls_handler->ssl)) != 0)
+	{
+		if (ret_value != MBEDTLS_ERR_SSL_WANT_READ && ret_value != MBEDTLS_ERR_SSL_WANT_WRITE)
+		{
+			printf("mbedtls_ssl_handshake returned -0x%x", -ret_value);
+			return ret_value;
+		}
+	}
+
+	printf("Verifying peer X.509 certificate.\n");
+	flags = mbedtls_ssl_get_verify_result(&mbedtls_handler->ssl);
+	// we should close the connection if it does not return 0
+	if (flags != 0)
+	{
+		printf("Failed to verify peer certificate.\n");
+		bzero(cert_info, sizeof(cert_info));
+		mbedtls_x509_crt_verify_info(cert_info, sizeof(cert_info), "  ! ", flags);
+		printf("Verification info: %s.\n", cert_info);
+	}
+	else
+	{
+		printf("Certificate verified.\n");
+	}
+	printf("Cipher suite is %s.\n", mbedtls_ssl_get_ciphersuite(&mbedtls_handler->ssl));
+
+	printf("Writing HTTP request.\n");
+	size_t written_bytes = 0;
+	do {
+		ret_value = mbedtls_ssl_write(&mbedtls_handler->ssl,
+								(const unsigned char *)http_request + written_bytes,
+								strlen(http_request) - written_bytes);
+		if (ret_value >= 0) 
+		{
+			printf("%d bytes written\n", ret_value);
+			written_bytes += ret_value;
+		} 
+		else if (ret_value != MBEDTLS_ERR_SSL_WANT_WRITE && ret_value != MBEDTLS_ERR_SSL_WANT_READ) 
+		{
+			printf("mbedtls_ssl_write returned -0x%x", -ret_value);
+			return ret_value;
+		}
+	} while(written_bytes < strlen(http_request));
 
 	return 0;
 }
