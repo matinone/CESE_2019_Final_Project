@@ -32,7 +32,8 @@
 |		cacert 		- 
 |		conf 		- 
 |		ssl 		- 
-|		server_fd 	- 
+|		server_fd 	- it has a single element of type int 
+|					  (the socket handler) named fd
 *-------------------------------------------------------------------*/
 typedef struct {
 	mbedtls_entropy_context 	entropy;

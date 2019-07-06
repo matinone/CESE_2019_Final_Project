@@ -34,6 +34,8 @@
 #define WEB_SERVER "www.thingspeak.com"
 #define WEB_PORT "443"
 
+#define RX_BUFFER_SIZE 100
+
 /* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
@@ -54,6 +56,7 @@ QueueHandle_t queue_wifi_tx_to_rx;
 /* ===== Prototypes of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
 static int send_http_request(int socket_handler, struct addrinfo* res, char* http_request);
+static int receive_http_response(int socket_handler, char* recv_buf, char* content_buf);
 static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler);
 static int send_tls_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request);
 
@@ -115,11 +118,11 @@ void wifi_tx_task(void *pvParameter)
 		.ai_family = AF_INET,		// IPv4
 		.ai_socktype = SOCK_STREAM,	// TCP
 	};
-	
+
 	// address info struct and receive buffers
 	struct addrinfo *res;
-	char recv_buf[100];
-	char content_buf[100];
+	char recv_buf[RX_BUFFER_SIZE];
+	char content_buf[RX_BUFFER_SIZE];
 	
 	// resolve the IP of the target website
 	int result = getaddrinfo(CONFIG_WEBSITE, "80", &hints, &res);
@@ -128,7 +131,7 @@ void wifi_tx_task(void *pvParameter)
 		while(1) vTaskDelay(1000 / portTICK_RATE_MS);
 	}
 	printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
-	
+
 	BaseType_t xStatus;
 	xStatus = xQueueSendToBack(queue_wifi_tx_to_rx, &res, 0);
 	if (xStatus != pdPASS)
@@ -138,7 +141,7 @@ void wifi_tx_task(void *pvParameter)
 
 	uint8_t queue_rcv_value;
 	char request_buffer[strlen(HTTP_REQUEST_WRITE)];
-	char * pch;
+	// char * pch;
 
 	while (1)
 	{
@@ -158,37 +161,10 @@ void wifi_tx_task(void *pvParameter)
 			}
 			
 			printf("Receiving HTTP response.\n");
-			int r;
 			int flag_rsp_ok = 0;
-			int flag_content = 0;
 			content_buf[0] = '\0';
 			
-			do {
-				bzero(recv_buf, sizeof(recv_buf));
-				r = lwip_read(s, recv_buf, sizeof(recv_buf) - 1);
-
-				if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
-				{
-					flag_rsp_ok = 1;
-				}
-
-				// check if the CONTENT of the response arrived
-				pch = strstr(recv_buf, "\n\r\n");
-				if (pch != NULL || flag_content == 1)
-				{
-					if (pch != NULL)
-					{
-						strcat(content_buf, pch+3);	// pch + 3 to ignore the LF+CR+LF
-					}
-					else
-					{
-						strcat(content_buf, recv_buf);
-					}
-					
-					flag_content = 1;
-				}
-
-			} while(r > 0);
+			flag_rsp_ok = receive_http_response(s, recv_buf, content_buf);
 
 			// close socket after receiving the response
 			lwip_close(s);
@@ -231,7 +207,7 @@ void wifi_secure_tx_task(void *pvParameter)
 	printf("WiFi successfully connected.\n\n");
 
 	mbedtls_connection_handler_t mbedtls_handler;
-	// mbedtls_net_context server_fd;	// it has a single element of type int (the socket handler) named fd
+	// mbedtls_net_context server_fd;	// 
 
 	ret = configure_tls(&mbedtls_handler);
 	if (ret != 0)
@@ -362,8 +338,8 @@ void wifi_rx_cmd_task(void * pvParameter)
 
 	// address info struct and receive buffers
 	struct addrinfo *res;
-	char recv_buf[100];
-	char content_buf[100];
+	char recv_buf[RX_BUFFER_SIZE];
+	char content_buf[RX_BUFFER_SIZE];
 	char * pch;
 
 	if (xQueueReceive(queue_wifi_tx_to_rx, &res, portMAX_DELAY) != pdTRUE)
@@ -518,6 +494,45 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 
 	return 0;
 }
+
+
+static int receive_http_response(int socket_handler, char* recv_buf, char* content_buf)
+{	
+	int r;
+	int flag_content = 0;
+	int flag_rsp_ok = 0;
+	char * pch;
+
+	do {
+		bzero(recv_buf, RX_BUFFER_SIZE);
+		r = lwip_read(socket_handler, recv_buf, RX_BUFFER_SIZE - 1);
+
+		if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
+		{
+			flag_rsp_ok = 1;
+		}
+
+		// check if the CONTENT of the response arrived
+		pch = strstr(recv_buf, "\n\r\n");
+		if (pch != NULL || flag_content == 1)
+		{
+			if (pch != NULL)
+			{
+				strcat(content_buf, pch+3);	// pch + 3 to ignore the LF+CR+LF
+			}
+			else
+			{
+				strcat(content_buf, recv_buf);
+			}
+			
+			flag_content = 1;
+		}
+
+	} while(r > 0);
+
+	return flag_rsp_ok;
+}
+
 
 
 static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler)
