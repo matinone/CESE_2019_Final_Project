@@ -115,5 +115,21 @@ void wifi_secure_tx_task(void *pvParameter);
 *-------------------------------------------------------------------*/
 void wifi_rx_cmd_task(void * pvParameter);
 
+
+/*------------------------------------------------------------------
+|  Function: wifi_secure_rx_cmd_task
+| ------------------------------------------------------------------
+|  Description: FreeRTOS task. It waits for the target website IP
+|				to be resolved and then waits for commands to be 
+|				received from ThingSpeak server.
+|
+|  Parameters:
+|		- pvParameter: void pointer used as task parameter during
+|					   task creation.
+|
+|  Returns:  void
+*-------------------------------------------------------------------*/
+void wifi_secure_rx_cmd_task(void * pvParameter);
+
 /* ===== Avoid multiple inclusion ===== */
 #endif // __WIFI_H__

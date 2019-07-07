@@ -34,7 +34,7 @@
 #define WEB_SERVER "www.thingspeak.com"
 #define WEB_PORT "443"
 
-#define RX_BUFFER_SIZE 100
+#define RX_BUFFER_SIZE 128
 
 /* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_i2c_to_wifi;
@@ -324,10 +324,79 @@ void wifi_rx_cmd_task(void * pvParameter)
 		{
 			printf("HTTP response status NOT OK.\n");
 		}
-		vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS / 2);
+		vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS);
 	}
 }
 
+
+void wifi_secure_rx_cmd_task(void * pvParameter)
+{
+	// wait for connection
+	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+
+	int ret;
+	char recv_buf[RX_BUFFER_SIZE];
+	char content_buf[RX_BUFFER_SIZE];
+	char * pch;
+
+	mbedtls_connection_handler_t mbedtls_handler;
+	ret = configure_tls(&mbedtls_handler);
+	if (ret != 0)
+	{
+		abort();
+	}
+
+	while (1)
+	{
+		printf("\nChecking if there is any new command to execute.\n");
+
+		ret = tls_send_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, HTTP_REQUEST_READ_CMD);
+		if (ret != 0)
+		{
+			goto exit;
+		}
+		
+		ESP_LOGI(TAG, "Receiving HTTP response.\n");
+		content_buf[0] = '\0';
+		int flag_rsp_ok = tls_receive_http_response(&mbedtls_handler, recv_buf, content_buf, RX_BUFFER_SIZE);
+
+		mbedtls_ssl_close_notify(&mbedtls_handler.ssl);
+
+		if (flag_rsp_ok == 1)
+		{
+			printf("HTTP response status OK.\n");
+			// printf("Response Content: %s\n", content_buf);
+
+			pch = strstr(content_buf, "CMD_");
+			if (pch != NULL)
+			{
+				printf("Received new command: %s\n", content_buf);
+			}
+			else
+			{
+				printf("No new commands.\n");
+			}
+		}
+		else 
+		{
+			printf("HTTP response status NOT OK.\n");
+		}
+
+	exit:
+		mbedtls_ssl_session_reset(&mbedtls_handler.ssl);
+		mbedtls_net_free(&mbedtls_handler.server_fd);
+
+		if(ret != 0)
+		{
+			mbedtls_strerror(ret, recv_buf, 100);
+			ESP_LOGE(TAG, "Last error was: -0x%x - %s", -ret, recv_buf);
+		}
+
+		putchar('\n'); // JSON output doesn't have a newline at end
+
+		vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS);
+	}
+}
 
 
 /* ===== Implementations of private functions ===== */
