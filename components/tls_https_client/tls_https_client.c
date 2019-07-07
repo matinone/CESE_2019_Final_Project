@@ -162,9 +162,10 @@ int tls_receive_http_response(mbedtls_connection_handler_t* mbedtls_handler, cha
 
 		if(ret < 0)
 		{
-			if (ret == -0x6800)
+			// expected timeout (not an error)
+			if (ret == MBEDTLS_ERR_SSL_TIMEOUT)
 			{
-				printf("This is an expected timeout (not an error).\n");
+				// printf("This is an expected timeout (not an error).\n");
 				ret = 0;
 			}
 			else
