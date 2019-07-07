@@ -39,8 +39,8 @@ extern EventGroupHandle_t wifi_event_group;
 // the PEM file was extracted from the output of this command:
 // openssl s_client -showcerts -connect www.thingspeak.com:443 </dev/null
 // the CA root cert is the last certificate given in the chain of certs
-extern const uint8_t server_root_cert_pem_start[] asm("_binary_openssl_certificate_pem_start");
-extern const uint8_t server_root_cert_pem_end[]   asm("_binary_openssl_certificate_pem_end");
+extern const uint8_t thingspeak_https_cert_start[] asm("_binary_thingspeak_https_certificate_pem_start");
+extern const uint8_t thingspeak_https_cert_end[]   asm("_binary_thingspeak_https_certificate_pem_end");
 
 static int connect_retry_num = 0;
 const int CONNECTED_BIT = BIT0;
@@ -199,7 +199,7 @@ void wifi_secure_tx_task(void *pvParameter)
 	printf("WiFi successfully connected.\n\n");
 
 	mbedtls_connection_handler_t mbedtls_handler;
-	ret = configure_tls(&mbedtls_handler, WEB_SERVER, server_root_cert_pem_start, server_root_cert_pem_end);
+	ret = configure_tls(&mbedtls_handler, WEB_SERVER, thingspeak_https_cert_start, thingspeak_https_cert_end);
 	if (ret != 0)
 	{
 		abort();
@@ -322,7 +322,7 @@ void wifi_secure_rx_cmd_task(void * pvParameter)
 	char * pch;
 
 	mbedtls_connection_handler_t mbedtls_handler;
-	ret = configure_tls(&mbedtls_handler, WEB_SERVER, server_root_cert_pem_start, server_root_cert_pem_end);
+	ret = configure_tls(&mbedtls_handler, WEB_SERVER, thingspeak_https_cert_start, thingspeak_https_cert_end);
 	if (ret != 0)
 	{
 		abort();
