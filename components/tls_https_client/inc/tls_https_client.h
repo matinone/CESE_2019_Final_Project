@@ -2,7 +2,6 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
-#include "mbedtls/error.h"
 
 /* ===== Public structs and enums ===== */
 /*------------------------------------------------------------------
@@ -32,3 +31,4 @@ typedef struct {
 int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, char* server, const uint8_t* cert_start, const uint8_t* cert_end);
 int tls_send_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request);
 int tls_receive_http_response(mbedtls_connection_handler_t* mbedtls_handler, char* recv_buf, char* content_buf, int buf_size);
+void tls_clean_up(mbedtls_connection_handler_t* mbedtls_handler, int error);

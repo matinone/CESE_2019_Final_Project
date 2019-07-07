@@ -7,6 +7,7 @@
 #include "mbedtls/esp_debug.h"
 #include "mbedtls/error.h"
 #include "mbedtls/certs.h"
+#include "mbedtls/error.h"
 
 int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, char* server, const uint8_t* cert_start, const uint8_t* cert_end)
 {
@@ -203,4 +204,23 @@ int tls_receive_http_response(mbedtls_connection_handler_t* mbedtls_handler, cha
 	} while(1);
 
 	return flag_rsp_ok;
+}
+
+
+void tls_clean_up(mbedtls_connection_handler_t* mbedtls_handler, int error)
+{
+	char error_buffer[50];
+	if (error == 0)
+	{
+		mbedtls_ssl_close_notify(&mbedtls_handler->ssl);
+	}
+	else
+	{
+		mbedtls_strerror(error, error_buffer, 50);
+		printf("Last error was: -0x%x - %s", -error, error_buffer);
+	}
+
+	mbedtls_ssl_session_reset(&mbedtls_handler->ssl);
+	mbedtls_net_free(&mbedtls_handler->server_fd);
+
 }

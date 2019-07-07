@@ -220,14 +220,15 @@ void wifi_secure_tx_task(void *pvParameter)
 			ret = tls_send_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, request_buffer);
 			if (ret != 0)
 			{
-				goto exit;
+				tls_clean_up(&mbedtls_handler, ret);
+				continue;
 			}
 
 			ESP_LOGI(TAG, "Receiving HTTP response.\n");
 			content_buf[0] = '\0';
 			int flag_rsp_ok = tls_receive_http_response(&mbedtls_handler,recv_buf, content_buf, RX_BUFFER_SIZE);
 
-			mbedtls_ssl_close_notify(&mbedtls_handler.ssl);
+			tls_clean_up(&mbedtls_handler, ret);
 
 			if (flag_rsp_ok == 1)
 			{
@@ -237,16 +238,6 @@ void wifi_secure_tx_task(void *pvParameter)
 			else 
 			{
 				printf("HTTP response status NOT OK.\n");
-			}
-
-		exit:
-			mbedtls_ssl_session_reset(&mbedtls_handler.ssl);
-			mbedtls_net_free(&mbedtls_handler.server_fd);
-
-			if(ret != 0)
-			{
-				mbedtls_strerror(ret, recv_buf, 100);
-				ESP_LOGE(TAG, "Last error was: -0x%x - %s", -ret, recv_buf);
 			}
 
 			putchar('\n'); // JSON output doesn't have a newline at end
@@ -344,14 +335,15 @@ void wifi_secure_rx_cmd_task(void * pvParameter)
 		ret = tls_send_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, HTTP_REQUEST_READ_CMD);
 		if (ret != 0)
 		{
-			goto exit;
+			tls_clean_up(&mbedtls_handler, ret);
+			continue;
 		}
 		
 		ESP_LOGI(TAG, "Receiving HTTP response.\n");
 		content_buf[0] = '\0';
 		int flag_rsp_ok = tls_receive_http_response(&mbedtls_handler, recv_buf, content_buf, RX_BUFFER_SIZE);
 
-		mbedtls_ssl_close_notify(&mbedtls_handler.ssl);
+		tls_clean_up(&mbedtls_handler, ret);
 
 		if (flag_rsp_ok == 1)
 		{
@@ -371,16 +363,6 @@ void wifi_secure_rx_cmd_task(void * pvParameter)
 		else 
 		{
 			printf("HTTP response status NOT OK.\n");
-		}
-
-	exit:
-		mbedtls_ssl_session_reset(&mbedtls_handler.ssl);
-		mbedtls_net_free(&mbedtls_handler.server_fd);
-
-		if(ret != 0)
-		{
-			mbedtls_strerror(ret, recv_buf, 100);
-			ESP_LOGE(TAG, "Last error was: -0x%x - %s", -ret, recv_buf);
 		}
 
 		putchar('\n'); // JSON output doesn't have a newline at end
