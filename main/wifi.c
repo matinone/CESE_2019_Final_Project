@@ -54,7 +54,7 @@ QueueHandle_t queue_wifi_tx_to_rx;
 
 /* ===== Prototypes of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
-static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler);
+static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, const uint8_t* cert_start, const uint8_t* cert_end);
 static int tls_send_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request);
 static int tls_receive_http_response(mbedtls_connection_handler_t* mbedtls_handler, char* recv_buf, char* content_buf, int buf_size);
 
@@ -205,7 +205,7 @@ void wifi_secure_tx_task(void *pvParameter)
 	printf("WiFi successfully connected.\n\n");
 
 	mbedtls_connection_handler_t mbedtls_handler;
-	ret = configure_tls(&mbedtls_handler);
+	ret = configure_tls(&mbedtls_handler, server_root_cert_pem_start, server_root_cert_pem_end);
 	if (ret != 0)
 	{
 		abort();
@@ -337,7 +337,7 @@ void wifi_secure_rx_cmd_task(void * pvParameter)
 	char * pch;
 
 	mbedtls_connection_handler_t mbedtls_handler;
-	ret = configure_tls(&mbedtls_handler);
+	ret = configure_tls(&mbedtls_handler, server_root_cert_pem_start, server_root_cert_pem_end);
 	if (ret != 0)
 	{
 		abort();
@@ -431,7 +431,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 }
 
 
-static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler)
+static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, const uint8_t* cert_start, const uint8_t* cert_end)
 {
 	int ret;
 	mbedtls_ssl_init(&mbedtls_handler->ssl);
@@ -451,8 +451,7 @@ static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler)
 	}
 
 	// load the CA root certificate
-	ret = mbedtls_x509_crt_parse(&mbedtls_handler->cacert, server_root_cert_pem_start,
-								 server_root_cert_pem_end-server_root_cert_pem_start);
+	ret = mbedtls_x509_crt_parse(&mbedtls_handler->cacert, cert_start, cert_end-cert_start);
 	if(ret < 0)
 	{
 		printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
