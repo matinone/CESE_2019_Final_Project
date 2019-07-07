@@ -56,7 +56,7 @@ QueueHandle_t queue_wifi_tx_to_rx;
 /* ===== Prototypes of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
 static int send_http_request(int socket_handler, struct addrinfo* res, char* http_request);
-static int receive_http_response(int socket_handler, char* recv_buf, char* content_buf);
+static int receive_http_response(int socket_handler, char* recv_buf, char* content_buf, int buf_size);
 static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler);
 static int tls_send_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request);
 static int tls_receive_http_response(mbedtls_connection_handler_t* mbedtls_handler, char* recv_buf, char* content_buf, int buf_size);
@@ -165,7 +165,7 @@ void wifi_tx_task(void *pvParameter)
 			int flag_rsp_ok = 0;
 			content_buf[0] = '\0';
 			
-			flag_rsp_ok = receive_http_response(s, recv_buf, content_buf);
+			flag_rsp_ok = receive_http_response(s, recv_buf, content_buf, RX_BUFFER_SIZE);
 
 			// close socket after receiving the response
 			lwip_close(s);
@@ -431,7 +431,7 @@ static int send_http_request(int socket_handler, struct addrinfo* res, char* htt
 }
 
 
-static int receive_http_response(int socket_handler, char* recv_buf, char* content_buf)
+static int receive_http_response(int socket_handler, char* recv_buf, char* content_buf, int buf_size)
 {	
 	int r;
 	int flag_content = 0;
@@ -439,8 +439,8 @@ static int receive_http_response(int socket_handler, char* recv_buf, char* conte
 	char * pch;
 
 	do {
-		bzero(recv_buf, RX_BUFFER_SIZE);
-		r = lwip_read(socket_handler, recv_buf, RX_BUFFER_SIZE - 1);
+		bzero(recv_buf, buf_size);
+		r = lwip_read(socket_handler, recv_buf, buf_size - 1);
 
 		if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
 		{
