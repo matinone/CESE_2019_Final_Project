@@ -50,8 +50,8 @@ void app_main()
 	xTaskCreate(&wifi_tx_task, "wifi_tx_task", 2048, NULL, 5, NULL);
 	xTaskCreate(&wifi_rx_cmd_task, "wifi_rx_cmd_task", 2048, NULL, 5, NULL);
 
-	// xTaskCreate(&wifi_secure_tx_task, "wifi_secure_tx_task", 2048*4, NULL, 5, NULL);
-	// xTaskCreate(&wifi_secure_rx_cmd_task, "wifi_secure_rx_cmd_task", 2048*4, NULL, 5, NULL);
+	// xTaskCreate(&wifi_secure_tx_task, "wifi_secure_tx_task", 2048*3, NULL, 5, NULL);
+	// xTaskCreate(&wifi_secure_rx_cmd_task, "wifi_secure_rx_cmd_task", 2048*3, NULL, 5, NULL);
 
 	// create the rest of the tasks with priority lower than wifi task
 	xTaskCreate(&echo_task, "echo_task", 2048, NULL, 4, NULL);
