@@ -1,3 +1,12 @@
+/* ===== [tls_https_client.c] =====
+ * Copyright Matias Brignone <mnbrignone@gmail.com>
+ * All rights reserved.
+ *
+ * Version: 0.1.0
+ * Creation Date: 2019
+ */
+
+/* ===== Dependencies ===== */
 #include "tls_https_client.h"
 
 #include "stdio.h"
@@ -9,6 +18,16 @@
 #include "mbedtls/certs.h"
 #include "mbedtls/error.h"
 
+/* ===== Macros of private constants ===== */
+
+
+/* ===== Declaration of private or external variables ===== */
+
+
+/* ===== Prototypes of private functions ===== */
+
+
+/* ===== Implementations of public functions ===== */
 int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, char* server, const uint8_t* cert_start, const uint8_t* cert_end)
 {
 	int ret;
@@ -224,3 +243,6 @@ void tls_clean_up(mbedtls_connection_handler_t* mbedtls_handler, int error)
 	mbedtls_net_free(&mbedtls_handler->server_fd);
 
 }
+
+
+/* ===== Implementations of private functions ===== */

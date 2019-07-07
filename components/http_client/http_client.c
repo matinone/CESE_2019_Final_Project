@@ -1,8 +1,28 @@
+/* ===== [http_client.c] =====
+ * Copyright Matias Brignone <mnbrignone@gmail.com>
+ * All rights reserved.
+ *
+ * Version: 0.1.0
+ * Creation Date: 2019
+ */
+
+/* ===== Dependencies ===== */
 #include "http_client.h"
 
 #include <stdio.h>
 #include <string.h>
 
+
+/* ===== Macros of private constants ===== */
+
+
+/* ===== Declaration of private or external variables ===== */
+
+
+/* ===== Prototypes of private functions ===== */
+
+
+/* ===== Implementations of public functions ===== */
 int send_http_request(int socket_handler, struct addrinfo* res, char* http_request)
 {
 	printf("Sending HTTP request.\n");
@@ -79,3 +99,6 @@ int receive_http_response(int socket_handler, char* recv_buf, char* content_buf,
 
 	return flag_rsp_ok;
 }
+
+
+/* ===== Implementations of private functions ===== */
