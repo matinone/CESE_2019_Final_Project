@@ -58,7 +58,8 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
 static int send_http_request(int socket_handler, struct addrinfo* res, char* http_request);
 static int receive_http_response(int socket_handler, char* recv_buf, char* content_buf);
 static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler);
-static int send_tls_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request);
+static int tls_send_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request);
+static int tls_receive_http_response(mbedtls_connection_handler_t* mbedtls_handler, char* recv_buf, char* content_buf, int buf_size);
 
 
 /* ===== Implementations of public functions ===== */
@@ -199,16 +200,14 @@ void wifi_tx_task(void *pvParameter)
 
 void wifi_secure_tx_task(void *pvParameter)
 {
-	char recv_buf[256];
-	char content_buf[100];
-	int ret, len;
+	char recv_buf[RX_BUFFER_SIZE];
+	char content_buf[RX_BUFFER_SIZE];
+	int ret;
 
 	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 	printf("WiFi successfully connected.\n\n");
 
 	mbedtls_connection_handler_t mbedtls_handler;
-	// mbedtls_net_context server_fd;	// 
-
 	ret = configure_tls(&mbedtls_handler);
 	if (ret != 0)
 	{
@@ -218,7 +217,6 @@ void wifi_secure_tx_task(void *pvParameter)
 	BaseType_t xStatus;
 	uint8_t queue_rcv_value;
 	char request_buffer[strlen(HTTP_REQUEST_WRITE)];
-	char * pch;
 
 	while(1) {
 		// Read data from the queue
@@ -228,78 +226,15 @@ void wifi_secure_tx_task(void *pvParameter)
 			ESP_LOGI(TAG, "Received from I2C MASTER TASK: %c\n", queue_rcv_value);
 			sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
 
-			ret = send_tls_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, request_buffer);
+			ret = tls_send_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, request_buffer);
 			if (ret != 0)
 			{
 				goto exit;
 			}
 
 			ESP_LOGI(TAG, "Receiving HTTP response.\n");
-			int flag_rsp_ok = 0;
-			int flag_content = 0;
 			content_buf[0] = '\0';
-			do
-			{
-				len = sizeof(recv_buf) - 1;
-				bzero(recv_buf, sizeof(recv_buf));
-				ret = mbedtls_ssl_read(&mbedtls_handler.ssl, (unsigned char *)recv_buf, len);
-
-				if(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
-					continue;
-
-				if(ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-					ret = 0;
-					break;
-				}
-
-				if(ret < 0)
-				{
-					if (ret == -0x6800)
-					{
-						printf("This is an expected timeout (not an error).\n");
-						ret = 0;
-					}
-					else
-					{
-						ESP_LOGE(TAG, "mbedtls_ssl_read returned -0x%x", -ret);
-					}
-
-					break;
-				}
-
-				if(ret == 0)
-				{
-					ESP_LOGI(TAG, "connection closed");
-					break;
-				}
-
-				len = ret;
-				ESP_LOGD(TAG, "%d bytes read\n", len);
-				/* Print response directly to stdout as it is read */
-				// for(int i = 0; i < len; i++) {
-				// 	putchar(recv_buf[i]);
-				// }
-
-				if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
-				{
-					flag_rsp_ok = 1;
-				}
-
-				pch = strstr(recv_buf, "\n\r\n");
-				if (pch != NULL || flag_content == 1)
-				{
-					if (pch != NULL)
-					{
-						strcat(content_buf, pch+3);	// pch + 3 to ignore the LF+CR+LF
-					}
-					else
-					{
-						strcat(content_buf, recv_buf);
-					}
-					
-					flag_content = 1;
-				}
-			} while(1);
+			int flag_rsp_ok = tls_receive_http_response(&mbedtls_handler,recv_buf, content_buf, RX_BUFFER_SIZE);
 
 			mbedtls_ssl_close_notify(&mbedtls_handler.ssl);
 
@@ -602,7 +537,7 @@ static int configure_tls(mbedtls_connection_handler_t* mbedtls_handler)
 }
 
 
-static int send_tls_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request)
+static int tls_send_http_request(mbedtls_connection_handler_t* mbedtls_handler, const char* server, const char* port, char* http_request)
 {
 	int ret_value, flags;
 	char cert_info[100];
@@ -656,7 +591,7 @@ static int send_tls_http_request(mbedtls_connection_handler_t* mbedtls_handler, 
 								strlen(http_request) - written_bytes);
 		if (ret_value >= 0) 
 		{
-			printf("%d bytes written\n", ret_value);
+			// printf("%d bytes written\n", ret_value);
 			written_bytes += ret_value;
 		} 
 		else if (ret_value != MBEDTLS_ERR_SSL_WANT_WRITE && ret_value != MBEDTLS_ERR_SSL_WANT_READ) 
@@ -667,4 +602,68 @@ static int send_tls_http_request(mbedtls_connection_handler_t* mbedtls_handler, 
 	} while(written_bytes < strlen(http_request));
 
 	return 0;
+}
+
+static int tls_receive_http_response(mbedtls_connection_handler_t* mbedtls_handler, char* recv_buf, char* content_buf, int buf_size)
+{
+	int ret = 0;
+	int flag_rsp_ok = 0;
+	int flag_content = 0;
+	char* pch;
+	do
+	{
+		bzero(recv_buf, buf_size);
+		ret = mbedtls_ssl_read(&mbedtls_handler->ssl, (unsigned char *)recv_buf, buf_size - 1);
+
+		if(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
+			return ret;
+
+		if(ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) 
+		{
+			ret = 0;
+			break;
+		}
+
+		if(ret < 0)
+		{
+			if (ret == -0x6800)
+			{
+				printf("This is an expected timeout (not an error).\n");
+				ret = 0;
+			}
+			else
+			{
+				printf("mbedtls_ssl_read returned -0x%x", -ret);
+			}
+
+			break;
+		}
+
+		if(ret == 0)
+		{
+			printf("connection closed");
+			break;
+		}
+
+		if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
+		{
+			flag_rsp_ok = 1;
+		}
+
+		pch = strstr(recv_buf, "\n\r\n");
+		if (pch != NULL || flag_content == 1)
+		{
+			if (pch != NULL)
+			{
+				strcat(content_buf, pch+3);	// pch + 3 to ignore the LF+CR+LF
+			}
+			else
+			{
+				strcat(content_buf, recv_buf);
+			}
+			flag_content = 1;
+		}
+	} while(1);
+
+	return flag_rsp_ok;
 }
