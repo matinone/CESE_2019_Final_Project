@@ -298,34 +298,9 @@ void wifi_rx_cmd_task(void * pvParameter)
 		}
 		
 		printf("Receiving HTTP response.\n");
-		int r;
-		int flag_rsp_ok = 0;
-		int flag_content = 0;
+		int flag_rsp_ok;
 		content_buf[0] = '\0';
-		
-		do {
-			bzero(recv_buf, sizeof(recv_buf));
-			r = lwip_read(s, recv_buf, sizeof(recv_buf) - 1);
-			if (strstr (recv_buf,"Status") != NULL && strstr (recv_buf,"200 OK") != NULL)
-			{
-				flag_rsp_ok = 1;
-			}
-
-			pch = strstr(recv_buf, "\n\r\n");
-			if (pch != NULL || flag_content == 1)
-			{
-				if (pch != NULL)
-				{
-					strcat(content_buf, pch+3);	// pch + 3 to ignore the LF+CR+LF
-				}
-				else
-				{
-					strcat(content_buf, recv_buf);
-				}
-				
-				flag_content = 1;
-			}
-		} while(r > 0);
+		flag_rsp_ok = receive_http_response(s, recv_buf, content_buf, RX_BUFFER_SIZE);
 
 		// close socket after receiving the response
 		lwip_close(s);
@@ -349,7 +324,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 		{
 			printf("HTTP response status NOT OK.\n");
 		}
-		vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS);
+		vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS / 2);
 	}
 }
 
