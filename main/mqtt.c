@@ -31,6 +31,7 @@ extern const uint8_t thingspeak_mqtts_cert_end[]   asm("_binary_thingspeak_mqtts
 static const char *TAG = "MQTTS_EXAMPLE";
 
 char* mqtt_publish_topic = "channels/776064/publish/fields/field1/2WBYREDTIXQ6X9PF";
+char* mqtt_subscribe_topic = "channels/776064/subscribe/fields/field1/E5V8ERAC6B0Y8160";
 char* mqtt_data = "110";
 
 const int WIFI_CONNECTED_BIT = BIT0;
@@ -45,6 +46,8 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 		case MQTT_EVENT_CONNECTED:
 			ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
 			xEventGroupSetBits(wifi_event_group, MQTT_CONNECTED_BIT);
+			msg_id = esp_mqtt_client_subscribe(client, mqtt_subscribe_topic, 0);
+            ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 			break;
 
 		case MQTT_EVENT_DISCONNECTED:
@@ -91,6 +94,9 @@ void mqtt_publish_task(void *pvParameter)
 		.uri = CONFIG_BROKER_URI,
 		.event_handle = mqtt_event_handler,
 		.cert_pem = (const char *)thingspeak_mqtts_cert_start,
+		.username = "mbrignone",
+		.password = "FP650XEYQ5XX0NY7",
+		.disable_clean_session = 0,
 	};
 
 	esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
@@ -110,6 +116,6 @@ void mqtt_publish_task(void *pvParameter)
 		{
 			printf("Error publishing.\n");
 		}
-		vTaskDelay(15000 / portTICK_RATE_MS);
+		vTaskDelay(30000 / portTICK_RATE_MS);
 	}
 }
