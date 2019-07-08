@@ -1,23 +1,12 @@
 #include "mqtt.h"
 
 #include <stdio.h>
-#include <stdint.h>
-#include <stddef.h>
 #include <string.h>
-#include "esp_wifi.h"
-#include "esp_system.h"
-#include "nvs_flash.h"
-#include "esp_event_loop.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
-
-#include "lwip/sockets.h"
-#include "lwip/dns.h"
-#include "lwip/netdb.h"
 
 #include "esp_log.h"
 #include "mqtt_client.h"
@@ -25,6 +14,8 @@
 #define CONFIG_BROKER_URI "mqtts://mqtt.thingspeak.com:8883"
 
 extern EventGroupHandle_t wifi_event_group;
+extern QueueHandle_t queue_i2c_to_wifi;
+
 extern const uint8_t thingspeak_mqtts_cert_start[] asm("_binary_thingspeak_mqtts_certificate_pem_start");
 extern const uint8_t thingspeak_mqtts_cert_end[]   asm("_binary_thingspeak_mqtts_certificate_pem_end");
 
@@ -36,6 +27,7 @@ char* mqtt_data = "110";
 
 const int WIFI_CONNECTED_BIT = BIT0;
 const int MQTT_CONNECTED_BIT = BIT1;
+
 
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 {
@@ -90,6 +82,10 @@ void mqtt_publish_task(void *pvParameter)
 	xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
 
 	int msg_id;
+	uint8_t queue_rcv_value;
+	char str_number[3];
+	BaseType_t xStatus;
+
 	const esp_mqtt_client_config_t mqtt_cfg = {
 		.uri = CONFIG_BROKER_URI,
 		.event_handle = mqtt_event_handler,
@@ -107,15 +103,23 @@ void mqtt_publish_task(void *pvParameter)
 	printf("Entering while loop.\n");
 	while(1)
 	{
-		msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic, mqtt_data, 0, 0, 0);
-		if (msg_id != -1)
+		// Read data from the queue
+		xStatus = xQueueReceive( queue_i2c_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
+		if (xStatus == pdPASS)
 		{
-			ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+			ESP_LOGI(TAG, "Received from I2C MASTER TASK: %c\n", queue_rcv_value);
+			sprintf(str_number, "%c", queue_rcv_value);
+			msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic, str_number, 0, 0, 0);
+			if (msg_id != -1)
+			{
+				ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+			}
+			else
+			{
+				printf("Error publishing.\n");
+			}
 		}
-		else
-		{
-			printf("Error publishing.\n");
-		}
-		vTaskDelay(30000 / portTICK_RATE_MS);
+		vTaskDelay(1000 / portTICK_RATE_MS);
 	}
 }
+
