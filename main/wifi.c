@@ -8,8 +8,6 @@
 
 /* ===== Dependencies ===== */
 #include "wifi.h"
-// #include "http_client.h"
-// #include "tls_https_client.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -24,22 +22,10 @@
 
 
 /* ===== Macros of private constants ===== */
-#define COMMAND_RX_CHECK_PERIOD 15000
 
-#define WEB_SERVER "www.thingspeak.com"
-#define WEB_PORT "443"
-
-#define RX_BUFFER_SIZE 128
 
 /* ===== Declaration of private or external variables ===== */
-extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
-
-// the PEM file was extracted from the output of this command:
-// openssl s_client -showcerts -connect www.thingspeak.com:443 </dev/null
-// the CA root cert is the last certificate given in the chain of certs
-extern const uint8_t thingspeak_https_cert_start[] asm("_binary_thingspeak_https_certificate_pem_start");
-extern const uint8_t thingspeak_https_cert_end[]   asm("_binary_thingspeak_https_certificate_pem_end");
 
 static int connect_retry_num = 0;
 static const int CONNECTED_BIT = BIT0;
