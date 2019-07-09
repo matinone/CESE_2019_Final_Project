@@ -20,6 +20,8 @@
 #include "i2c_master.h"
 #include "i2c_slave.h"
 
+#include "http_tasks.h"
+#include "tls_https_tasks.h"
 #include "mqtt.h"
 
 // queues
