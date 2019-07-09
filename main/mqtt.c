@@ -1,3 +1,12 @@
+/* ===== [mqtt.c] =====
+ * Copyright Matias Brignone <mnbrignone@gmail.com>
+ * All rights reserved.
+ *
+ * Version: 0.1.0
+ * Creation Date: 2019
+ */
+
+/* ===== Dependencies ===== */
 #include "mqtt.h"
 
 #include <stdio.h>
@@ -11,19 +20,19 @@
 #include "esp_log.h"
 #include "mqtt_client.h"
 
+/* ===== Macros of private constants ===== */
 #define CONFIG_BROKER_URI "mqtts://mqtt.thingspeak.com:8883"
 
+
+/* ===== Declaration of private or external variables ===== */
 extern EventGroupHandle_t wifi_event_group;
 extern QueueHandle_t queue_i2c_to_wifi;
 
 extern const uint8_t thingspeak_mqtts_cert_start[] asm("_binary_thingspeak_mqtts_certificate_pem_start");
 extern const uint8_t thingspeak_mqtts_cert_end[]   asm("_binary_thingspeak_mqtts_certificate_pem_end");
-
-static const char *TAG = "MQTTS_EXAMPLE";
-
-char* mqtt_publish_topic = "channels/776064/publish/fields/field1/2WBYREDTIXQ6X9PF";
-char* mqtt_subscribe_topic = "channels/776064/subscribe/fields/field2/E5V8ERAC6B0Y8160";
-char* mqtt_data = "110";
+static const char *TAG = "MQTTS_TASK";
+static char* mqtt_publish_topic = "channels/776064/publish/fields/field1/2WBYREDTIXQ6X9PF";
+static char* mqtt_subscribe_topic = "channels/776064/subscribe/fields/field2/E5V8ERAC6B0Y8160";
 
 const int WIFI_CONNECTED_BIT = BIT0;
 const int MQTT_CONNECTED_BIT = BIT1;
@@ -31,66 +40,13 @@ const int MQTT_CONNECTED_BIT = BIT1;
 // queue to pass data from the mqtt event handler to the mqtt rx task
 QueueHandle_t queue_mqtt_subs_to_rx_task;
 
-static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
-{
-	esp_mqtt_client_handle_t client = event->client;
-	int msg_id;
-	BaseType_t xStatus;
-	mqtt_sub_data_received_t mqtt_data_received;
-
-	switch (event->event_id) {
-		case MQTT_EVENT_CONNECTED:
-			ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-			xEventGroupSetBits(wifi_event_group, MQTT_CONNECTED_BIT);
-			msg_id = esp_mqtt_client_subscribe(client, mqtt_subscribe_topic, 0);
-            ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-			break;
-
-		case MQTT_EVENT_DISCONNECTED:
-			ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
-			break;
-
-		case MQTT_EVENT_SUBSCRIBED:
-			ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-			break;
-
-		case MQTT_EVENT_UNSUBSCRIBED:
-			ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
-			break;
-
-		case MQTT_EVENT_PUBLISHED:
-			ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
-			break;
-
-		case MQTT_EVENT_DATA:
-			ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-			// printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-			// printf("DATA=%.*s\r\n", event->data_len, event->data);
-
-			mqtt_data_received.data_len = event->data_len;
-			mqtt_data_received.data = event->data;
-			mqtt_data_received.topic_len = event->topic_len;
-			mqtt_data_received.topic = event->topic;
-			xStatus = xQueueSendToBack(queue_mqtt_subs_to_rx_task, &mqtt_data_received, 0);
-			if (xStatus != pdPASS)
-			{
-				printf("Could not send MQTT data_received to the queue.\n");
-			}
-
-			break;
-
-		case MQTT_EVENT_ERROR:
-			ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
-			break;
-
-		default:
-			ESP_LOGI(TAG, "Other event id:%d", event->event_id);
-			break;
-	}
-	return ESP_OK;
-}
 
 
+/* ===== Prototypes of private functions ===== */
+static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event);
+
+
+/* ===== Implementations of public functions ===== */
 void mqtt_publish_task(void *pvParameter)
 {
 	// create a queue capable of containing a 5 pointers to struct subscription_data_received_t
@@ -129,7 +85,7 @@ void mqtt_publish_task(void *pvParameter)
 			msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic, str_number, 0, 0, 0);
 			if (msg_id != -1)
 			{
-				ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+				ESP_LOGI(TAG, "Sent publish successful.\n");
 			}
 			else
 			{
@@ -154,10 +110,71 @@ void mqtt_rx_task(void *pvParameter)
 		xStatus = xQueueReceive( queue_mqtt_subs_to_rx_task, &(mqtt_data_received),  50 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
 		{
-			ESP_LOGI(TAG, "MQTT RX received data.\n");
+			printf("MQTT RX received data.\n");
 			printf("TOPIC = %.*s\r\n", mqtt_data_received.topic_len, mqtt_data_received.topic);
 			printf("DATA = %.*s\r\n", mqtt_data_received.data_len, mqtt_data_received.data);
 		}
 		vTaskDelay(1000 / portTICK_RATE_MS);
 	}
+}
+
+
+/* ===== Implementations of private functions ===== */
+static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
+{
+	esp_mqtt_client_handle_t client = event->client;
+	int msg_id = 0;
+	BaseType_t xStatus;
+	mqtt_sub_data_received_t mqtt_data_received;
+
+	switch (event->event_id) {
+		case MQTT_EVENT_CONNECTED:
+			printf("MQTT_EVENT_CONNECTED\n");
+			xEventGroupSetBits(wifi_event_group, MQTT_CONNECTED_BIT);
+			msg_id = esp_mqtt_client_subscribe(client, mqtt_subscribe_topic, 0);
+            printf("Subscribing to topic %s with msg_id = %d.\n", mqtt_subscribe_topic, msg_id);
+			break;
+
+		case MQTT_EVENT_DISCONNECTED:
+			printf("MQTT_EVENT_DISCONNECTED\n");
+			break;
+
+		case MQTT_EVENT_SUBSCRIBED:
+			printf("MQTT_EVENT_SUBSCRIBED with msg_id = %d.\n", event->msg_id);
+			break;
+
+		case MQTT_EVENT_UNSUBSCRIBED:
+			printf("MQTT_EVENT_UNSUBSCRIBED, msg_id=%d.\n", event->msg_id);
+			break;
+
+		case MQTT_EVENT_PUBLISHED:
+			printf("MQTT_EVENT_PUBLISHED, msg_id=%d.\n", event->msg_id);
+			break;
+
+		case MQTT_EVENT_DATA:
+			printf("MQTT_EVENT_DATA\n");
+			// printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+			// printf("DATA=%.*s\r\n", event->data_len, event->data);
+
+			mqtt_data_received.data_len = event->data_len;
+			mqtt_data_received.data = event->data;
+			mqtt_data_received.topic_len = event->topic_len;
+			mqtt_data_received.topic = event->topic;
+			xStatus = xQueueSendToBack(queue_mqtt_subs_to_rx_task, &mqtt_data_received, 0);
+			if (xStatus != pdPASS)
+			{
+				printf("Could not send MQTT data_received to the queue.\n");
+			}
+
+			break;
+
+		case MQTT_EVENT_ERROR:
+			printf("MQTT_EVENT_ERROR\n");
+			break;
+
+		default:
+			printf("Other event - id: %d.\n", event->event_id);
+			break;
+	}
+	return ESP_OK;
 }

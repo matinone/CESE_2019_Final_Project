@@ -16,7 +16,7 @@
 /* ===== Macros of public constants ===== */
 #define MAX_WIFI_CONNECT_RETRY 10
 
-// /* ===== Public structs and enums ===== */
+/* ===== Public structs and enums ===== */
 
 
 /* ===== Prototypes of public functions ===== */
