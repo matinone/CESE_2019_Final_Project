@@ -20,6 +20,8 @@
 #include "i2c_master.h"
 #include "i2c_slave.h"
 
+#include "mqtt.h"
+
 // queues
 QueueHandle_t queue_uart_to_i2c;		// queue to pass data between the ECHO TASK and the I2C SLAVE TASK 
 QueueHandle_t queue_i2c_to_wifi;		// queue to pass data between the I2C MASTER TASK and the WIFI TASK 
@@ -52,6 +54,9 @@ void app_main()
 
 	// xTaskCreate(&wifi_secure_tx_task, "wifi_secure_tx_task", 2048*3, NULL, 5, NULL);
 	// xTaskCreate(&wifi_secure_rx_cmd_task, "wifi_secure_rx_cmd_task", 2048*3, NULL, 5, NULL);
+
+	// xTaskCreate(&mqtt_publish_task, "mqtt_publish_task", 2048, NULL, 5, NULL);
+	// xTaskCreate(&mqtt_rx_task, "mqtt_rx_task", 2048, NULL, 5, NULL);
 
 	// create the rest of the tasks with priority lower than wifi task
 	xTaskCreate(&echo_task, "echo_task", 2048, NULL, 4, NULL);
