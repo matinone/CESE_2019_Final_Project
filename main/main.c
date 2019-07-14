@@ -24,6 +24,8 @@
 #include "tls_https_tasks.h"
 #include "mqtt.h"
 
+#include "ble_server_task.h"
+
 // queues
 QueueHandle_t queue_uart_to_i2c;		// queue to pass data between the ECHO TASK and the I2C SLAVE TASK 
 QueueHandle_t queue_i2c_to_wifi;		// queue to pass data between the I2C MASTER TASK and the WIFI TASK 
@@ -35,7 +37,7 @@ EventGroupHandle_t wifi_event_group;	// event group to synchronize the WIFI TASK
 void app_main()
 {
 	esp_err_t return_value;
-	
+
 	// disable the default wifi logging
 	esp_log_level_set("wifi", ESP_LOG_NONE);
 
@@ -46,8 +48,6 @@ void app_main()
         return_value = nvs_flash_init();
     }
     ESP_ERROR_CHECK(return_value);
-
-
 
 	initialize_wifi();
 	initialize_uart();
@@ -73,6 +73,8 @@ void app_main()
 	xTaskCreate(&echo_task, "echo_task", 2048, NULL, 4, NULL);
 	xTaskCreate(&i2c_master_task, "i2c_master_task", 2048, NULL, 4, NULL);
 	xTaskCreate(&i2c_slave_task, "i2c_slave_task", 2048, NULL, 4, NULL);
+
+	// xTaskCreate(&ble_server_task, "ble_server_task", 2048, NULL, 5, NULL);
 
 	// vTaskStartScheduler is called in the startup code before app_main is executed (see start_cpu0 function in ESP-IDF components/esp32/cpu_start.c)
 }
