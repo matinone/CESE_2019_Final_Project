@@ -34,12 +34,21 @@ EventGroupHandle_t wifi_event_group;	// event group to synchronize the WIFI TASK
 // main application
 void app_main()
 {
+	esp_err_t return_value;
+	
 	// disable the default wifi logging
 	esp_log_level_set("wifi", ESP_LOG_NONE);
 
-	// initialize NVS (Non Volatile Storage)
-	ESP_ERROR_CHECK(nvs_flash_init());	// restart system if this initialization fails
-	
+    // initialize NVS (Non Volatile Storage), restart system if the initialization fails
+    return_value = nvs_flash_init();
+    if (return_value == ESP_ERR_NVS_NO_FREE_PAGES || return_value == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        return_value = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(return_value);
+
+
+
 	initialize_wifi();
 	initialize_uart();
 
