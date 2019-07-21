@@ -18,7 +18,9 @@
 
 /* ===== Public structs and enums ===== */
 typedef enum {
-    WIFI_RX,
+    HTTP_RX,
+    HTTPS_RX,
+    MQTT_RX,
     BLE_SERVER,
     UART_RX,
     I2C_SLAVE,

@@ -25,7 +25,7 @@
 
 
 /* ===== Declaration of private or external variables ===== */
-extern EventGroupHandle_t wifi_event_group;
+EventGroupHandle_t wifi_event_group;	// event group to synchronize the WIFI TASK with the WIFI DRIVER events
 
 static int connect_retry_num = 0;
 static const int CONNECTED_BIT = BIT0;

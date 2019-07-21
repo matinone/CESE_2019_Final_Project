@@ -32,7 +32,7 @@
 #define COMMAND_LENGTH  3
 
 /* ===== Declaration of private or external variables ===== */
-extern QueueHandle_t queue_i2c_to_wifi;
+QueueHandle_t queue_i2c_to_wifi;
 static const char* TAG = "I2C_MASTER_TASK";
 
 /* ===== Prototypes of private functions ===== */

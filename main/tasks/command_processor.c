@@ -82,8 +82,12 @@ char* translate_rx_module(rx_module_t module)
 {
     switch(module)
     {
-        case WIFI_RX:
-            return "WIFI_RX";
+        case HTTP_RX:
+            return "HTTP_RX";
+        case HTTPS_RX:
+            return "HTTPS_RX";
+        case MQTT_RX:
+            return "MQTT_RX";
         case BLE_SERVER:
             return "BLE_SERVER";
         case UART_RX:

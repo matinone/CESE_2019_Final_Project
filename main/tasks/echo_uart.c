@@ -44,8 +44,8 @@ void initialize_uart()
     uart_set_pin(UART_NUM_0, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     uart_driver_install(UART_NUM_0, 1024, 0, 0, NULL, 0);
 
-    // create a queue capable of containing 5 command_type_t values
-    queue_uart_tx = xQueueCreate(5, sizeof(command_type_t));
+    // create a queue capable of containing 5 uint8_t values
+    queue_uart_tx = xQueueCreate(5, sizeof(uint8_t));
     if (queue_uart_tx == NULL)
     {
         printf("Could not create queue_uart_tx.\n");
