@@ -23,7 +23,7 @@
 #define COMMAND_LENGTH  3
 
 /* ===== Declaration of private or external variables ===== */
-extern QueueHandle_t queue_uart_to_i2c;
+QueueHandle_t queue_i2c_slave_tx;
 static const char *TAG = "I2C_SLAVE_TASK";
 
 /* ===== Prototypes of private functions ===== */
@@ -31,6 +31,13 @@ static const char *TAG = "I2C_SLAVE_TASK";
 /* ===== Implementations of public functions ===== */
 esp_err_t initialize_i2c_slave(uint16_t slave_addr)
 {
+    // create a queue capable of containing 5 char values
+    queue_i2c_slave_tx = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_i2c_slave_tx == NULL)
+    {
+        printf("Could not create queue_i2c_slave_tx.\n");
+    }
+
     int i2c_slave_port = I2C_SLAVE_NUM;
     i2c_config_t i2c_slave_config = {
         .mode = I2C_MODE_SLAVE,
@@ -59,7 +66,7 @@ void i2c_slave_task(void *pvParameter)
     while (1)
     {
         // read data from the queue
-        xStatus = xQueueReceive( queue_uart_to_i2c, &queue_rcv_value,  20 / portTICK_RATE_MS);
+        xStatus = xQueueReceive( queue_i2c_slave_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
         if (xStatus == pdPASS)
         {   
             command_frame[1] = queue_rcv_value;
