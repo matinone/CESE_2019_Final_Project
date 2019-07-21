@@ -13,8 +13,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-
 #include "esp_log.h"
+#include <string.h>
 
 
 /* ===== Macros of private constants ===== */
@@ -76,6 +76,27 @@ void command_processor_task(void *pvParameter)
         
         vTaskDelay(CMD_RX_CHECK_TIME_MS / portTICK_RATE_MS);
     }
+}
+
+
+command_type_t str_to_cmd(char* str_command)
+{
+    if (strstr(str_command, "CMD_START") != NULL)
+        return CMD_START;
+    if (strstr(str_command, "CMD_STOP") != NULL)
+        return CMD_STOP;
+    if (strstr(str_command, "CMD_STATUS") != NULL)
+        return CMD_STATUS;
+    if (strstr(str_command, "CMD_RESTART") != NULL)
+        return CMD_RESTART;
+    if (strstr(str_command, "CMD_WIFI") != NULL)
+        return CMD_WIFI;
+    if (strstr(str_command, "CMD_BLE") != NULL)
+        return CMD_BLE;
+    if (strstr(str_command, "CMD_ECHO") != NULL)
+        return CMD_ECHO;
+
+    return CMD_INVALID;
 }
 
 /* ===== Implementations of private functions ===== */

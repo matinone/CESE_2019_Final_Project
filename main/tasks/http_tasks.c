@@ -209,7 +209,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 			{
 				printf("Received new command: %s\n", content_buf);
 				
-				http_command.command = CMD_ECHO;
+				http_command.command = str_to_cmd(content_buf);
 				xStatus = xQueueSendToBack(queue_command_processor_rx, &http_command, 1000 / portTICK_RATE_MS);
 	            if (xStatus != pdPASS)
 	            {

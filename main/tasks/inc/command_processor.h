@@ -34,6 +34,7 @@ typedef enum {
     CMD_WIFI,
     CMD_BLE,
     CMD_ECHO,
+    CMD_INVALID,
 }   command_type_t;
 
 typedef struct {
@@ -68,6 +69,19 @@ int8_t initialize_command_processor();
 |  Returns:  void
 *-------------------------------------------------------------------*/
 void command_processor_task(void *pvParameter);
+
+
+/*------------------------------------------------------------------
+|  Function: str_to_cmd
+| ------------------------------------------------------------------
+|  Description:
+|
+|  Parameters:
+|       - str_command:
+|
+|  Returns:  command_type_t
+*-------------------------------------------------------------------*/
+command_type_t str_to_cmd(char* str_command);
 
 
 /* ===== Avoid multiple inclusion ===== */
