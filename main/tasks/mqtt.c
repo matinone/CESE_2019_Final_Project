@@ -8,6 +8,7 @@
 
 /* ===== Dependencies ===== */
 #include "mqtt.h"
+#include "command_processor.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -26,7 +27,7 @@
 
 /* ===== Declaration of private or external variables ===== */
 extern EventGroupHandle_t wifi_event_group;
-extern QueueHandle_t queue_i2c_to_wifi;
+extern QueueHandle_t queue_command_processor_rx;
 
 extern const uint8_t thingspeak_mqtts_cert_start[] asm("_binary_thingspeak_mqtts_certificate_pem_start");
 extern const uint8_t thingspeak_mqtts_cert_end[]   asm("_binary_thingspeak_mqtts_certificate_pem_end");
@@ -39,7 +40,7 @@ const int MQTT_CONNECTED_BIT = BIT1;
 
 // queue to pass data from the mqtt event handler to the mqtt rx task
 QueueHandle_t queue_mqtt_subs_to_rx_task;
-
+QueueHandle_t queue_mqtt_tx;
 
 
 /* ===== Prototypes of private functions ===== */
@@ -49,6 +50,13 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event);
 /* ===== Implementations of public functions ===== */
 void mqtt_publish_task(void *pvParameter)
 {
+	// create a queue capable of containing 5 uint8_t values
+    queue_mqtt_tx = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_mqtt_tx == NULL)
+    {
+        printf("Could not create queue_mqtt_tx.\n");
+    }
+
 	// create a queue capable of containing a 5 pointers to struct subscription_data_received_t
 	queue_mqtt_subs_to_rx_task = xQueueCreate(5, sizeof(mqtt_sub_data_received_t));
 
@@ -76,12 +84,14 @@ void mqtt_publish_task(void *pvParameter)
 
 	while(1)
 	{
-		// Read data from the queue
-		xStatus = xQueueReceive( queue_i2c_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
+		// read data from the queue
+		xStatus = xQueueReceive(queue_mqtt_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
 		{
-			ESP_LOGI(TAG, "Received from I2C MASTER TASK: %c\n", queue_rcv_value);
-			sprintf(str_number, "%c", queue_rcv_value);
+			ESP_LOGI(TAG, "Received from Command Processor TASK: %d\n", queue_rcv_value);
+			sprintf(str_number, "%d", queue_rcv_value);
+			// ThingSpeak free cloud requires some time between transactions (15 seconds)
+			vTaskDelay(15000 / portTICK_RATE_MS);
 			msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic, str_number, 0, 0, 0);
 			if (msg_id != -1)
 			{
@@ -100,19 +110,29 @@ void mqtt_rx_task(void *pvParameter)
 {
 	BaseType_t xStatus;
 	mqtt_sub_data_received_t mqtt_data_received;
+	// command to send to the command processor
+	rx_command_t mqtt_command;
+    mqtt_command.rx_id = MQTT_RX;
 
 	xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
 	printf("MQTT Connected (MQTT RX task).\n");
 
 	while(1)
 	{
-		// Read data from the queue
-		xStatus = xQueueReceive( queue_mqtt_subs_to_rx_task, &(mqtt_data_received),  50 / portTICK_RATE_MS);
+		// read data from the queue (passed from the event handler)
+		xStatus = xQueueReceive(queue_mqtt_subs_to_rx_task, &(mqtt_data_received),  50 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
 		{
 			printf("MQTT RX received data.\n");
 			printf("TOPIC = %.*s\r\n", mqtt_data_received.topic_len, mqtt_data_received.topic);
 			printf("DATA = %.*s\r\n", mqtt_data_received.data_len, mqtt_data_received.data);
+
+			mqtt_command.command = atoi(mqtt_data_received.data);
+			xStatus = xQueueSendToBack(queue_command_processor_rx, &mqtt_command, 1000 / portTICK_RATE_MS);
+            if (xStatus != pdPASS)
+            {
+                printf("Could not send the data to the queue.\n");
+            }
 		}
 		vTaskDelay(1000 / portTICK_RATE_MS);
 	}

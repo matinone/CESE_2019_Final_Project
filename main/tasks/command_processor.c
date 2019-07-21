@@ -25,6 +25,7 @@ QueueHandle_t queue_command_processor_rx;
 extern QueueHandle_t queue_uart_tx;
 extern QueueHandle_t queue_http_tx;
 extern QueueHandle_t queue_tls_https_tx;
+extern QueueHandle_t queue_mqtt_tx;
 // static const char* TAG = "CMD_PROCESSOR_TASK";
 
 /* ===== Prototypes of private functions ===== */
@@ -149,6 +150,8 @@ char* translate_command_type(command_type_t command)
             return "CMD_BLE";
         case CMD_ECHO:
             return "CMD_ECHO";
+        case CMD_INVALID:
+            return "CMD_INVALID";
         default:
             return "UNKNOWN";
     }
@@ -164,6 +167,8 @@ QueueHandle_t* get_module_queue(rx_module_t module)
             return &queue_http_tx;
         case HTTPS_RX:
             return &queue_tls_https_tx;
+        case MQTT_RX:
+            return &queue_mqtt_tx;
         default:
             return NULL;
     }
