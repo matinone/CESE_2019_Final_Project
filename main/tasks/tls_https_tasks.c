@@ -11,6 +11,7 @@
 #include "thingspeak_http_request.h"
 #include "http_client.h"
 #include "tls_https_client.h"
+#include "command_processor.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -33,7 +34,7 @@
 #define RX_BUFFER_SIZE 128
 
 /* ===== Declaration of private or external variables ===== */
-extern QueueHandle_t queue_i2c_to_wifi;
+extern QueueHandle_t queue_command_processor_rx;
 extern EventGroupHandle_t wifi_event_group;
 
 // the PEM file was extracted from the output of this command:
@@ -45,6 +46,8 @@ extern const uint8_t thingspeak_https_cert_end[]   asm("_binary_thingspeak_https
 static const int CONNECTED_BIT = BIT0;
 static const char *TAG = "TLS_HTTPS_TASK";
 
+QueueHandle_t queue_tls_https_tx;
+
 
 /* ===== Prototypes of private functions ===== */
 
@@ -55,6 +58,13 @@ void wifi_secure_tx_task(void *pvParameter)
 	char recv_buf[RX_BUFFER_SIZE];
 	char content_buf[RX_BUFFER_SIZE];
 	int ret;
+
+	// create a queue capable of containing 5 uint8_t values
+    queue_tls_https_tx = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_tls_https_tx == NULL)
+    {
+        printf("Could not create queue_tls_https_tx.\n");
+    }
 
 	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 	printf("WiFi successfully connected.\n\n");
@@ -71,11 +81,11 @@ void wifi_secure_tx_task(void *pvParameter)
 	char request_buffer[strlen(HTTP_REQUEST_WRITE)];
 
 	while(1) {
-		// Read data from the queue
-		xStatus = xQueueReceive( queue_i2c_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
+		// read data from the queue
+		xStatus = xQueueReceive(queue_tls_https_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
 		{
-			ESP_LOGI(TAG, "Received from I2C MASTER TASK: %c\n", queue_rcv_value);
+			ESP_LOGI(TAG, "Received from Command Processor TASK: %d\n", queue_rcv_value);
 			sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
 
 			ret = tls_send_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, request_buffer);
@@ -118,6 +128,11 @@ void wifi_secure_rx_cmd_task(void * pvParameter)
 	char recv_buf[RX_BUFFER_SIZE];
 	char content_buf[RX_BUFFER_SIZE];
 	char * pch;
+	BaseType_t xStatus;
+
+	// command to send to the command processor
+	rx_command_t tls_https_command;
+    tls_https_command.rx_id = HTTPS_RX;
 
 	mbedtls_connection_handler_t mbedtls_handler;
 	ret = configure_tls(&mbedtls_handler, WEB_SERVER, thingspeak_https_cert_start, thingspeak_https_cert_end);
@@ -152,6 +167,13 @@ void wifi_secure_rx_cmd_task(void * pvParameter)
 			if (pch != NULL)
 			{
 				printf("Received new command: %s\n", content_buf);
+
+				tls_https_command.command = str_to_cmd(content_buf);
+				xStatus = xQueueSendToBack(queue_command_processor_rx, &tls_https_command, 1000 / portTICK_RATE_MS);
+	            if (xStatus != pdPASS)
+	            {
+	                printf("Could not send the data to the queue.\n");
+	            }
 			}
 			else
 			{

@@ -24,6 +24,7 @@
 QueueHandle_t queue_command_processor_rx;
 extern QueueHandle_t queue_uart_tx;
 extern QueueHandle_t queue_http_tx;
+extern QueueHandle_t queue_tls_https_tx;
 // static const char* TAG = "CMD_PROCESSOR_TASK";
 
 /* ===== Prototypes of private functions ===== */
@@ -49,6 +50,7 @@ void command_processor_task(void *pvParameter)
 {   
     rx_command_t current_command;
     BaseType_t xStatus;
+    QueueHandle_t* generic_queue_handle_ptr;
 
     while (1)
     {
@@ -63,10 +65,18 @@ void command_processor_task(void *pvParameter)
             switch(current_command.command)
             {
                 case CMD_ECHO:
-                    xStatus = xQueueSendToBack(*(get_module_queue(current_command.rx_id)), &current_command.command, 1000 / portTICK_RATE_MS);
-                    if (xStatus != pdPASS)
+                    generic_queue_handle_ptr = get_module_queue(current_command.rx_id);
+                    if (generic_queue_handle_ptr != NULL)
                     {
-                        printf("Could not send the data to the queue.\n");
+                        xStatus = xQueueSendToBack(*generic_queue_handle_ptr, &current_command.command, 1000 / portTICK_RATE_MS);
+                        if (xStatus != pdPASS)
+                        {
+                            printf("Could not send the data to the queue.\n");
+                        }
+                    }
+                    else
+                    {
+                        printf("There is no queue handle match for module %s.\n", translate_rx_module(current_command.rx_id));
                     }
                     break;
                 default:
@@ -152,6 +162,8 @@ QueueHandle_t* get_module_queue(rx_module_t module)
             return &queue_uart_tx;
         case HTTP_RX:
             return &queue_http_tx;
+        case HTTPS_RX:
+            return &queue_tls_https_tx;
         default:
             return NULL;
     }
