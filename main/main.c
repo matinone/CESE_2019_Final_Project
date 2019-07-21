@@ -24,7 +24,7 @@
 #include "tls_https_tasks.h"
 #include "mqtt.h"
 
-#include "ble_server_task.h"
+#include "ble_server.h"
 
 // queues
 QueueHandle_t queue_uart_to_i2c;		// queue to pass data between the ECHO TASK and the I2C SLAVE TASK 
@@ -73,8 +73,6 @@ void app_main()
 	xTaskCreate(&echo_task, "echo_task", 2048, NULL, 4, NULL);
 	xTaskCreate(&i2c_master_task, "i2c_master_task", 2048, NULL, 4, NULL);
 	xTaskCreate(&i2c_slave_task, "i2c_slave_task", 2048, NULL, 4, NULL);
-
-	// xTaskCreate(&ble_server_task, "ble_server_task", 2048, NULL, 5, NULL);
 
 	// vTaskStartScheduler is called in the startup code before app_main is executed (see start_cpu0 function in ESP-IDF components/esp32/cpu_start.c)
 }
