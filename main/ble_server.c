@@ -129,8 +129,6 @@ static struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = {
 };
 
 
-void example_write_event_env(esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
-
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event) {
@@ -173,13 +171,6 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
         break;
     default:
         break;
-    }
-}
-
-void example_write_event_env(esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param){
-    esp_gatt_status_t status = ESP_GATT_OK;
-    if (param->write.need_rsp){
-        esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, status, NULL);
     }
 }
 
@@ -280,7 +271,11 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
 
             }
         }
-        example_write_event_env(gatts_if, param);
+
+        if (param->write.need_rsp){
+            esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
+        }
+
         break;
     }
     case ESP_GATTS_EXEC_WRITE_EVT:
