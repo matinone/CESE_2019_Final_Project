@@ -56,7 +56,7 @@ void echo_task(void *pvParameter)
 {   
     uint8_t* uart_rcv_buffer = (uint8_t*) malloc(1);
     int rcv_len;
-    command_type_t command_type;
+    uint8_t command_type;
     rx_command_t uart_command;
     uart_command.rx_id = UART_RX;
 

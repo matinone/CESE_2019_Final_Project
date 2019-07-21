@@ -11,6 +11,7 @@
 #include "wifi.h"
 #include "thingspeak_http_request.h"
 #include "http_client.h"
+#include "command_processor.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -29,14 +30,15 @@
 #define RX_BUFFER_SIZE 128
 
 /* ===== Declaration of private or external variables ===== */
-extern QueueHandle_t queue_i2c_to_wifi;
 extern EventGroupHandle_t wifi_event_group;
+extern QueueHandle_t queue_command_processor_rx;
 
 static const int CONNECTED_BIT = BIT0;
 static const char *TAG = "HTTP_TASK";
 
 // queue to pass the IP resolution from wifi_tx_task to wifi_rx_cmd_task
 QueueHandle_t queue_wifi_tx_to_rx;
+QueueHandle_t queue_http_tx;
 
 
 /* ===== Prototypes of private functions ===== */
@@ -45,6 +47,13 @@ QueueHandle_t queue_wifi_tx_to_rx;
 /* ===== Implementations of public functions ===== */
 void wifi_tx_task(void *pvParameter)
 {
+	// create a queue capable of containing 5 uint8_t values
+    queue_http_tx = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_http_tx == NULL)
+    {
+        printf("Could not create queue_http_tx.\n");
+    }
+
 	// create a queue capable of containing a single pointer to struct addrinfo
 	queue_wifi_tx_to_rx = xQueueCreate(1, sizeof(struct addrinfo *));
 	if (queue_wifi_tx_to_rx == NULL)
@@ -96,10 +105,10 @@ void wifi_tx_task(void *pvParameter)
 	while (1)
 	{
 		// Read data from the queue
-		xStatus = xQueueReceive( queue_i2c_to_wifi, &queue_rcv_value,  20 / portTICK_RATE_MS);
+		xStatus = xQueueReceive(queue_http_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
 		{
-			ESP_LOGI(TAG, "Received from I2C MASTER TASK: %c\n", queue_rcv_value);
+			ESP_LOGI(TAG, "Received from Command Processor TASK: %d\n", queue_rcv_value);
 			sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
 			
 			// create a new socket
@@ -152,11 +161,15 @@ void wifi_rx_cmd_task(void * pvParameter)
 	// wait for connection
 	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 
+	BaseType_t xStatus;
 	// address info struct and receive buffers
 	struct addrinfo *res;
 	char recv_buf[RX_BUFFER_SIZE];
 	char content_buf[RX_BUFFER_SIZE];
 	char * pch;
+	// command to send to the command processor
+	rx_command_t http_command;
+    http_command.rx_id = HTTP_RX;
 
 	if (xQueueReceive(queue_wifi_tx_to_rx, &res, portMAX_DELAY) != pdTRUE)
 	{
@@ -195,6 +208,14 @@ void wifi_rx_cmd_task(void * pvParameter)
 			if (pch != NULL)
 			{
 				printf("Received new command: %s\n", content_buf);
+				
+				http_command.command = CMD_ECHO;
+				xStatus = xQueueSendToBack(queue_command_processor_rx, &http_command, 1000 / portTICK_RATE_MS);
+	            if (xStatus != pdPASS)
+	            {
+	                printf("Could not send the data to the queue.\n");
+	            }
+
 			}
 			else
 			{

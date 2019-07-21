@@ -23,6 +23,7 @@
 /* ===== Declaration of private or external variables ===== */
 QueueHandle_t queue_command_processor_rx;
 extern QueueHandle_t queue_uart_tx;
+extern QueueHandle_t queue_http_tx;
 // static const char* TAG = "CMD_PROCESSOR_TASK";
 
 /* ===== Prototypes of private functions ===== */
@@ -128,6 +129,8 @@ QueueHandle_t* get_module_queue(rx_module_t module)
     {
         case UART_RX:
             return &queue_uart_tx;
+        case HTTP_RX:
+            return &queue_http_tx;
         default:
             return NULL;
     }
