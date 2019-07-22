@@ -215,7 +215,6 @@ void wifi_rx_cmd_task(void * pvParameter)
 	            {
 	                printf("Could not send the data to the queue.\n");
 	            }
-
 			}
 			else
 			{

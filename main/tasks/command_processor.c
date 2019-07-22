@@ -9,6 +9,7 @@
 
 /* ===== Dependencies ===== */
 #include "command_processor.h"
+#include "ble_server.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -26,6 +27,7 @@ extern QueueHandle_t queue_uart_tx;
 extern QueueHandle_t queue_http_tx;
 extern QueueHandle_t queue_tls_https_tx;
 extern QueueHandle_t queue_mqtt_tx;
+extern QueueHandle_t queue_ble_server_tx;
 // static const char* TAG = "CMD_PROCESSOR_TASK";
 
 /* ===== Prototypes of private functions ===== */
@@ -49,6 +51,7 @@ int8_t initialize_command_processor()
 
 void command_processor_task(void *pvParameter)
 {   
+    int8_t ble_server_status = -1;
     rx_command_t current_command;
     BaseType_t xStatus;
     QueueHandle_t* generic_queue_handle_ptr;
@@ -65,6 +68,23 @@ void command_processor_task(void *pvParameter)
             // do something here depending on the received command
             switch(current_command.command)
             {
+                case CMD_BLE:
+                    if (ble_server_status != 0)
+                    {
+                        printf("Starting BLE server.\n");
+                        ble_server_status = start_ble_server();
+                        if (ble_server_status != 0)
+                        {
+                            printf("Could not initialize BLE server.\n");
+                        }
+                    }
+                    else if (ble_server_status == 0)
+                    {
+                        printf("Stopping BLE server.\n");
+                        ble_server_status = stop_ble_server();
+                        ble_server_status = -1;
+                    }
+                    break;
                 case CMD_ECHO:
                     generic_queue_handle_ptr = get_module_queue(current_command.rx_id);
                     if (generic_queue_handle_ptr != NULL)
@@ -169,6 +189,8 @@ QueueHandle_t* get_module_queue(rx_module_t module)
             return &queue_tls_https_tx;
         case MQTT_RX:
             return &queue_mqtt_tx;
+        case BLE_SERVER:
+            return &queue_ble_server_tx;
         default:
             return NULL;
     }

@@ -1,11 +1,14 @@
 #include "ble_server.h"
 
+#include "command_processor.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/queue.h"
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_bt.h"
@@ -18,6 +21,9 @@
 #include "esp_gatt_common_api.h"
 
 #define GATTS_TAG "GATTS_TASK"
+
+extern QueueHandle_t queue_command_processor_rx;
+QueueHandle_t queue_ble_server_tx;
 
 ///Declare the static function
 static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
@@ -219,11 +225,25 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         esp_gatt_rsp_t rsp;
         memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
         rsp.attr_value.handle = param->read.handle;
-        rsp.attr_value.len = 4;
-        rsp.attr_value.value[0] = 0xde;
-        rsp.attr_value.value[1] = 0xed;
-        rsp.attr_value.value[2] = 0xbe;
-        rsp.attr_value.value[3] = 0xef;
+
+        uint8_t queue_rcv_value;
+        // read data from the queue (do not wait)
+        BaseType_t xStatus = xQueueReceive(queue_ble_server_tx, &queue_rcv_value,  0 / portTICK_RATE_MS);
+        if (xStatus == pdPASS)
+        {
+            rsp.attr_value.len = 1;
+            rsp.attr_value.value[0] = queue_rcv_value; 
+        }
+        else
+        {
+            // dummy values
+            rsp.attr_value.len = 4;
+            rsp.attr_value.value[0] = 0x01;
+            rsp.attr_value.value[1] = 0x23;
+            rsp.attr_value.value[2] = 0x45;
+            rsp.attr_value.value[3] = 0x67;
+        }
+
         esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id,
                                     ESP_GATT_OK, &rsp);
         break;
@@ -237,6 +257,16 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
 
         if (param->write.need_rsp){
             esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
+        }
+
+        BaseType_t xStatus;
+        rx_command_t ble_command;
+        ble_command.rx_id = BLE_SERVER;
+        ble_command.command = *(param->write.value);   // command processor queue accepts a single value, the rest will be ignored
+        xStatus = xQueueSendToBack(queue_command_processor_rx, &ble_command, 100 / portTICK_RATE_MS);
+        if (xStatus != pdPASS)
+        {
+            printf("Could not send the data to the queue.\n");
         }
 
         break;
@@ -385,6 +415,13 @@ int8_t start_ble_server()
         // release all the memory associated with BT classic
         ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
         first_time = 1;
+    }
+
+    // create a queue capable of containing 5 uint8_t values
+    queue_ble_server_tx = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_ble_server_tx == NULL)
+    {
+        printf("Could not create queue_ble_server_tx.\n");
     }
 
     // configure and initialize BT controller 
