@@ -63,5 +63,31 @@ void mqtt_publish_task(void *pvParameter);
 void mqtt_rx_task(void *pvParameter);
 
 
+/*------------------------------------------------------------------
+|  Function: start_mqtt_custom_client
+| ------------------------------------------------------------------
+|  Description:
+|
+|  Parameters:
+|		-
+|
+|  Returns:  void
+*-------------------------------------------------------------------*/
+void start_custom_mqtt_client();
+
+
+/*------------------------------------------------------------------
+|  Function: stop_mqtt_custom_client
+| ------------------------------------------------------------------
+|  Description:
+|
+|  Parameters:
+|		-
+|
+|  Returns:  void
+*-------------------------------------------------------------------*/
+void stop_custom_mqtt_client();
+
+
 /* ===== Avoid multiple inclusion ===== */
 #endif // __MQTT_H__

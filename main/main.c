@@ -31,6 +31,7 @@
 void app_main()
 {
 	esp_err_t return_value;
+	rx_module_t wifi_module = HTTP_RX;
 
 	// disable the default wifi logging
 	esp_log_level_set("wifi", ESP_LOG_NONE);
@@ -45,7 +46,7 @@ void app_main()
 
 	initialize_wifi(1);
 	initialize_uart();
-	initialize_command_processor();
+	initialize_command_processor(wifi_module);
 
 	// do not use I2C for now
 	// initialize_i2c_master();

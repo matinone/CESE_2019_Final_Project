@@ -11,6 +11,7 @@
 #include "command_processor.h"
 #include "wifi.h"
 #include "ble_server.h"
+#include "mqtt.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -35,11 +36,13 @@ extern QueueHandle_t queue_ble_server_tx;
 char* translate_rx_module(rx_module_t module);
 char* translate_command_type(command_type_t command);
 QueueHandle_t* get_module_queue(rx_module_t module);
+rx_module_t wifi_module;
 
 
 /* ===== Implementations of public functions ===== */
-int8_t initialize_command_processor()
+int8_t initialize_command_processor(rx_module_t wifi_type)
 {
+    wifi_module = wifi_type;
     // create a queue capable of containing 5 rx_command_t values
     queue_command_processor_rx = xQueueCreate(5, sizeof(rx_command_t));
     if (queue_command_processor_rx == NULL)
@@ -76,12 +79,20 @@ void command_processor_task(void *pvParameter)
                         printf("Starting WiFi.\n");
                         initialize_wifi(0);
                         wifi_status = 1;
+                        if (wifi_module == MQTT_RX)
+                        {
+                            start_custom_mqtt_client();
+                        }
                     }
                     else if (wifi_status == 1)
                     {
                         printf("Stopping WiFi.\n");
                         stop_wifi();
                         wifi_status = 0;
+                        if (wifi_module == MQTT_RX)
+                        {
+                            stop_custom_mqtt_client();
+                        }
                     }
                     break;
 

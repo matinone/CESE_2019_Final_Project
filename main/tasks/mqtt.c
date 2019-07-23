@@ -42,6 +42,7 @@ const int MQTT_CONNECTED_BIT = BIT1;
 QueueHandle_t queue_mqtt_subs_to_rx_task;
 QueueHandle_t queue_mqtt_tx;
 
+static esp_mqtt_client_handle_t client;
 
 /* ===== Prototypes of private functions ===== */
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event);
@@ -77,13 +78,16 @@ void mqtt_publish_task(void *pvParameter)
 		.disable_clean_session = 0,
 	};
 
-	esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+	client = esp_mqtt_client_init(&mqtt_cfg);
 	esp_mqtt_client_start(client);
 
-	xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+	// xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
 
 	while(1)
 	{
+		// always wait for this
+		xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+
 		// read data from the queue
 		xStatus = xQueueReceive(queue_mqtt_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
@@ -119,6 +123,9 @@ void mqtt_rx_task(void *pvParameter)
 
 	while(1)
 	{
+		// always wait for this
+		xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+
 		// read data from the queue (passed from the event handler)
 		xStatus = xQueueReceive(queue_mqtt_subs_to_rx_task, &(mqtt_data_received),  50 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
@@ -136,6 +143,20 @@ void mqtt_rx_task(void *pvParameter)
 		}
 		vTaskDelay(1000 / portTICK_RATE_MS);
 	}
+}
+
+
+void start_custom_mqtt_client()
+{
+	// wait for wifi connection (max 10 seconds)
+	// xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, 10000 / portTICK_RATE_MS);
+	esp_mqtt_client_start(client);
+}
+
+
+void stop_custom_mqtt_client()
+{
+	esp_mqtt_client_stop(client);
 }
 
 
