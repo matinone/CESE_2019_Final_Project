@@ -43,7 +43,7 @@ void app_main()
     }
     ESP_ERROR_CHECK(return_value);
 
-	initialize_wifi();
+	initialize_wifi(1);
 	initialize_uart();
 	initialize_command_processor();
 

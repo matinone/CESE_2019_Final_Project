@@ -22,7 +22,7 @@
 
 
 /* ===== Macros of private constants ===== */
-
+#define ASSOC_LEAVE 8
 
 /* ===== Declaration of private or external variables ===== */
 EventGroupHandle_t wifi_event_group;	// event group to synchronize the WIFI TASK with the WIFI DRIVER events
@@ -37,16 +37,18 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
 
 
 /* ===== Implementations of public functions ===== */
-void initialize_wifi()
-{
-	// create the event group to handle wifi events
-	wifi_event_group = xEventGroupCreate();
+void initialize_wifi(uint8_t first_time)
+{	
+	if (first_time == 1)
+	{
+		// create the event group to handle wifi events
+		wifi_event_group = xEventGroupCreate();
+		// initialize the wifi event handler
+		ESP_ERROR_CHECK(esp_event_loop_init(wifi_event_handler, NULL));
+	}
 	
 	// initialize the tcp stack
 	tcpip_adapter_init();
-
-	// initialize the wifi event handler
-	ESP_ERROR_CHECK(esp_event_loop_init(wifi_event_handler, NULL));
 	
 	// initialize the wifi stack in STAtion mode with config in RAM
 	wifi_init_config_t wifi_init_config = WIFI_INIT_CONFIG_DEFAULT();
@@ -67,6 +69,13 @@ void initialize_wifi()
 }
 
 
+void stop_wifi()
+{
+	esp_wifi_disconnect();
+	esp_wifi_stop();
+	esp_wifi_deinit();
+}
+
 /* ===== Implementations of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 {
@@ -82,14 +91,22 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 		break;
 	
 	case SYSTEM_EVENT_STA_DISCONNECTED:
-		if (connect_retry_num < MAX_WIFI_CONNECT_RETRY)
+		// reason == ASSOC_LEAVE means that esp_wifi_disconnect() was called
+		if (event->event_info.disconnected.reason != ASSOC_LEAVE)
 		{
-			printf("WiFi disconnected, trying to reconnect %d/%d.\n", connect_retry_num+1, MAX_WIFI_CONNECT_RETRY);
-			esp_wifi_connect();
+			if (connect_retry_num < MAX_WIFI_CONNECT_RETRY)
+			{
+				printf("WiFi disconnected, trying to reconnect %d/%d.\n", connect_retry_num+1, MAX_WIFI_CONNECT_RETRY);
+				esp_wifi_connect();
+			}
+			else
+			{
+				printf("WiFi tried to reconnect %d times and failed. Not trying anymore.\n", MAX_WIFI_CONNECT_RETRY);
+			}
 		}
 		else
 		{
-			printf("WiFi tried to reconnect %d times and failed. Not trying anymore.\n", MAX_WIFI_CONNECT_RETRY);
+			printf("WiFi intentionally disconnected, not trying to reconnect.\n");
 		}
 		xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
 		break;

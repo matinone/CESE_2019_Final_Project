@@ -11,6 +11,7 @@
 #define __WIFI_H__
 
 /* ===== Dependencies ===== */
+#include <stdint.h>
 
 
 /* ===== Macros of public constants ===== */
@@ -28,11 +29,24 @@
 |				the WiFi driver and starts WiFi.
 |
 |  Parameters:
+|		- first_time: flag to be used the first time it is called.
+|
+|  Returns:  void
+*-------------------------------------------------------------------*/
+void initialize_wifi(uint8_t first_time);
+
+
+/*------------------------------------------------------------------
+|  Function: stop_wifi
+| ------------------------------------------------------------------
+|  Description: it disconnects the WiFi and stops the WiFi driver.
+|
+|  Parameters:
 |		-
 |
 |  Returns:  void
 *-------------------------------------------------------------------*/
-void initialize_wifi();
+void stop_wifi();
 
 
 /* ===== Avoid multiple inclusion ===== */

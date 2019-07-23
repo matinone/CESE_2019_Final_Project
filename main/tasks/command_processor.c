@@ -9,6 +9,7 @@
 
 /* ===== Dependencies ===== */
 #include "command_processor.h"
+#include "wifi.h"
 #include "ble_server.h"
 
 #include "freertos/FreeRTOS.h"
@@ -52,6 +53,7 @@ int8_t initialize_command_processor()
 void command_processor_task(void *pvParameter)
 {   
     int8_t ble_server_status = -1;
+    int8_t wifi_status = 1;
     rx_command_t current_command;
     BaseType_t xStatus;
     QueueHandle_t* generic_queue_handle_ptr;
@@ -68,6 +70,21 @@ void command_processor_task(void *pvParameter)
             // do something here depending on the received command
             switch(current_command.command)
             {
+                case CMD_WIFI:
+                    if (wifi_status == 0)
+                    {
+                        printf("Starting WiFi.\n");
+                        initialize_wifi(0);
+                        wifi_status = 1;
+                    }
+                    else if (wifi_status == 1)
+                    {
+                        printf("Stopping WiFi.\n");
+                        stop_wifi();
+                        wifi_status = 0;
+                    }
+                    break;
+
                 case CMD_BLE:
                     if (ble_server_status != 0)
                     {

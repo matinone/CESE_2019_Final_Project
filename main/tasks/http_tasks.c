@@ -90,7 +90,7 @@ void wifi_tx_task(void *pvParameter)
 		printf("Unable to resolve IP for target website %s\n", CONFIG_WEBSITE);
 		while(1) vTaskDelay(1000 / portTICK_RATE_MS);
 	}
-	printf("Target website's IP resolved for target website %s\n", CONFIG_WEBSITE);
+	printf("Target website's IP resolved for %s\n", CONFIG_WEBSITE);
 
 	BaseType_t xStatus;
 	xStatus = xQueueSendToBack(queue_wifi_tx_to_rx, &res, 0);
@@ -104,6 +104,9 @@ void wifi_tx_task(void *pvParameter)
 
 	while (1)
 	{
+		// always wait for connection
+		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+		
 		// Read data from the queue
 		xStatus = xQueueReceive(queue_http_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
@@ -181,6 +184,9 @@ void wifi_rx_cmd_task(void * pvParameter)
 
 	while (1)
 	{
+		// always wait for connection
+		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+
 		printf("\nChecking if there is any new command to execute.\n");
 
 		// create a new socket
