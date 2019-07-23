@@ -81,6 +81,9 @@ void wifi_secure_tx_task(void *pvParameter)
 	char request_buffer[strlen(HTTP_REQUEST_WRITE)];
 
 	while(1) {
+		// always wait for connection
+		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+
 		// read data from the queue
 		xStatus = xQueueReceive(queue_tls_https_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)
@@ -143,6 +146,9 @@ void wifi_secure_rx_cmd_task(void * pvParameter)
 
 	while (1)
 	{
+		// always wait for connection
+		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+		
 		printf("\nChecking if there is any new command to execute.\n");
 
 		ret = tls_send_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, HTTP_REQUEST_READ_CMD);
