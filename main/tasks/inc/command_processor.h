@@ -37,6 +37,12 @@ typedef enum {
     CMD_INVALID,
 }   command_type_t;
 
+typedef enum {
+    WIFI_MODE,
+    BLE_MODE,
+    OFFLINE_MODE,
+}   wireless_state_t;
+
 typedef struct {
     rx_module_t     rx_id;
     command_type_t  command; 

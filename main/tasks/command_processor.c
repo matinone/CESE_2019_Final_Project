@@ -30,6 +30,8 @@ extern QueueHandle_t queue_http_tx;
 extern QueueHandle_t queue_tls_https_tx;
 extern QueueHandle_t queue_mqtt_tx;
 extern QueueHandle_t queue_ble_server_tx;
+
+wireless_state_t wireless_state;
 // static const char* TAG = "CMD_PROCESSOR_TASK";
 
 /* ===== Prototypes of private functions ===== */
@@ -43,6 +45,7 @@ rx_module_t wifi_module;
 int8_t initialize_command_processor(rx_module_t wifi_type)
 {
     wifi_module = wifi_type;
+    wireless_state = WIFI_MODE;
     // create a queue capable of containing 5 rx_command_t values
     queue_command_processor_rx = xQueueCreate(5, sizeof(rx_command_t));
     if (queue_command_processor_rx == NULL)
@@ -55,8 +58,6 @@ int8_t initialize_command_processor(rx_module_t wifi_type)
 
 void command_processor_task(void *pvParameter)
 {   
-    int8_t ble_server_status = -1;
-    int8_t wifi_status = 1;
     rx_command_t current_command;
     BaseType_t xStatus;
     QueueHandle_t* generic_queue_handle_ptr;
@@ -74,45 +75,72 @@ void command_processor_task(void *pvParameter)
             switch(current_command.command)
             {
                 case CMD_WIFI:
-                    if (wifi_status == 0)
+                    switch(wireless_state)
                     {
-                        printf("Starting WiFi.\n");
-                        initialize_wifi(0);
-                        wifi_status = 1;
-                        if (wifi_module == MQTT_RX)
-                        {
-                            start_custom_mqtt_client();
-                        }
+                        case WIFI_MODE:
+                            printf("Stopping WiFi.\n");
+                            stop_wifi();
+                            if (wifi_module == MQTT_RX)
+                            {
+                                stop_custom_mqtt_client();
+                            }
+                            wireless_state = OFFLINE_MODE;
+                            break;
+                        case BLE_MODE:
+                            printf("Stopping BLE server and starting WiFi.\n");
+                            stop_ble_server();
+                            initialize_wifi(0);
+                            if (wifi_module == MQTT_RX)
+                            {
+                                start_custom_mqtt_client();
+                            }
+                            wireless_state = WIFI_MODE;
+                            break;
+                        case OFFLINE_MODE:
+                            printf("Starting WiFi.\n");
+                            initialize_wifi(0);
+                            if (wifi_module == MQTT_RX)
+                            {
+                                start_custom_mqtt_client();
+                            }
+                            wireless_state = WIFI_MODE;
+                            break;
+                        default:
+                            printf("Invalid wireless state.\n");
+                            wireless_state = OFFLINE_MODE;
                     }
-                    else if (wifi_status == 1)
-                    {
-                        printf("Stopping WiFi.\n");
-                        stop_wifi();
-                        wifi_status = 0;
-                        if (wifi_module == MQTT_RX)
-                        {
-                            stop_custom_mqtt_client();
-                        }
-                    }
+
                     break;
 
                 case CMD_BLE:
-                    if (ble_server_status != 0)
+                    switch(wireless_state)
                     {
-                        printf("Starting BLE server.\n");
-                        ble_server_status = start_ble_server();
-                        if (ble_server_status != 0)
-                        {
-                            printf("Could not initialize BLE server.\n");
-                        }
-                    }
-                    else if (ble_server_status == 0)
-                    {
-                        printf("Stopping BLE server.\n");
-                        ble_server_status = stop_ble_server();
-                        ble_server_status = -1;
+                        case WIFI_MODE:
+                            printf("Stopping WiFi and starting BLE server.\n");
+                            stop_wifi();
+                            if (wifi_module == MQTT_RX)
+                            {
+                                stop_custom_mqtt_client();
+                            }
+                            start_ble_server();
+                            wireless_state = BLE_MODE;
+                            break;
+                        case BLE_MODE:
+                            printf("Stopping BLE server.\n");
+                            stop_ble_server();
+                            wireless_state = OFFLINE_MODE;
+                            break;
+                        case OFFLINE_MODE:
+                            printf("Starting BLE server.\n");
+                            start_ble_server();
+                            wireless_state = BLE_MODE;
+                            break;
+                        default:
+                            printf("Invalid wireless state.\n");
+                            wireless_state = OFFLINE_MODE;
                     }
                     break;
+                
                 case CMD_ECHO:
                     generic_queue_handle_ptr = get_module_queue(current_command.rx_id);
                     if (generic_queue_handle_ptr != NULL)
