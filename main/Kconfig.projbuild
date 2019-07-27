@@ -10,11 +10,18 @@ menu "WiFi configuration"
 		help
 			Enter the password of the wifi network
 
-	config APP_PROTOCOL
-		string "Application Protocol (HTTP/HTTPS/MQTT)"
-		default "HTTP"
+	choice APP_PROTOCOL
+		prompt "Application Protocol"
+		default HTTP
 		help
-			Enter the Application Protocol (HTTP, HTTPS or MQTT)
+			Select the Application Protocol.
+	config HTTP
+		bool "HTTP"
+	config HTTPS
+		bool "HTTPS"
+	config MQTT
+		bool "MQTT"
+	endchoice
 
 	config HTTP_WEBSITE
 		string "HTTP target"
@@ -28,10 +35,15 @@ menu "WiFi configuration"
 		help
 			Enter the address of the target website (for HTTPS only)
 
-	config MQTT_BROKER
-		string "MQTT broker"
-		default "thingspeak"
+	choice MQTT_BROKER
+		prompt "MQTT_BROKER"
+		default THINGSPEAK
 		help
-			Enter the name of the MQTT broker (thingspeak or adafruit)
+			Select the MQTT broker.
+	config THINGSPEAK
+		bool "ThingSpeak"
+	config ADAFRUIT
+		bool "Adafruit"
+	endchoice
 	
 endmenu

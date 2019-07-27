@@ -20,15 +20,17 @@
 #include "i2c_master.h"
 #include "i2c_slave.h"
 
-#if APP_PROTOCOL == HTTP
+#ifdef CONFIG_HTTP
 	#include "http_tasks.h"
 	#define WIFI_MODULE HTTP_RX
-#elif APP_PROTOCOL == HTTPS
-	#include "tls_https_tasks.h"
-	#define WIFI_MODULE HTTPS_RX
 #else
-	#include "mqtt.h"
-	#define WIFI_MODULE MQTT_RX
+	#ifdef CONFIG_HTTPS
+		#include "tls_https_tasks.h"
+		#define WIFI_MODULE HTTPS_RX
+	#else
+		#include "mqtt.h"
+		#define WIFI_MODULE MQTT_RX
+	#endif
 #endif
 
 #include "ble_server.h"
@@ -64,17 +66,18 @@ void app_main()
 	// therefore there is no need to use mutexes or any other synchronization method during printf calls
 
 	// create HTTP/HTTPS/MQTT tasks (depending on the compiler options) with the highest priority
-	#if APP_PROTOCOL == HTTP
+	#ifdef CONFIG_HTTP
 		xTaskCreate(&wifi_tx_task, "wifi_tx_task", 2048, NULL, 6, NULL);
 		xTaskCreate(&wifi_rx_cmd_task, "wifi_rx_cmd_task", 2048, NULL, 6, NULL);
-	#elif APP_PROTOCOL == HTTPS
+	#else
+		#ifdef CONFIG_HTTPS
 		xTaskCreate(&wifi_secure_tx_task, "wifi_secure_tx_task", 2048*3, NULL, 6, NULL);
 		xTaskCreate(&wifi_secure_rx_cmd_task, "wifi_secure_rx_cmd_task", 2048*3, NULL, 6, NULL);
-	#else
+		#else
 		xTaskCreate(&mqtt_publish_task, "mqtt_publish_task", 2048, NULL, 6, NULL);
 		xTaskCreate(&mqtt_rx_task, "mqtt_rx_task", 2048, NULL, 6, NULL);
+		#endif
 	#endif
-
 
 	// create the rest of the tasks with priority lower than wifi task
 	xTaskCreate(&command_processor_task, "command_processor_task", 2048, NULL, 5, NULL);
