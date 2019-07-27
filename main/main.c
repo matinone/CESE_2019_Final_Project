@@ -20,9 +20,16 @@
 #include "i2c_master.h"
 #include "i2c_slave.h"
 
-#include "http_tasks.h"
-#include "tls_https_tasks.h"
-#include "mqtt.h"
+#if APP_PROTOCOL == HTTP
+	#include "http_tasks.h"
+	#define WIFI_MODULE HTTP_RX
+#elif APP_PROTOCOL == HTTPS
+	#include "tls_https_tasks.h"
+	#define WIFI_MODULE HTTPS_RX
+#else
+	#include "mqtt.h"
+	#define WIFI_MODULE MQTT_RX
+#endif
 
 #include "ble_server.h"
 #include "command_processor.h"
@@ -31,7 +38,7 @@
 void app_main()
 {
 	esp_err_t return_value;
-	rx_module_t wifi_module = HTTP_RX;
+	rx_module_t wifi_module = WIFI_MODULE;
 
 	// disable the default wifi logging
 	esp_log_level_set("wifi", ESP_LOG_NONE);
@@ -56,15 +63,18 @@ void app_main()
 	// printf is redirected to the UART and it is thread safe, 
 	// therefore there is no need to use mutexes or any other synchronization method during printf calls
 
-	// create wifi tasks with the highest priority (http requests should not be interrupted)
-	// xTaskCreate(&wifi_tx_task, "wifi_tx_task", 2048, NULL, 6, NULL);
-	// xTaskCreate(&wifi_rx_cmd_task, "wifi_rx_cmd_task", 2048, NULL, 6, NULL);
+	// create HTTP/HTTPS/MQTT tasks (depending on the compiler options) with the highest priority
+	#if APP_PROTOCOL == HTTP
+		xTaskCreate(&wifi_tx_task, "wifi_tx_task", 2048, NULL, 6, NULL);
+		xTaskCreate(&wifi_rx_cmd_task, "wifi_rx_cmd_task", 2048, NULL, 6, NULL);
+	#elif APP_PROTOCOL == HTTPS
+		xTaskCreate(&wifi_secure_tx_task, "wifi_secure_tx_task", 2048*3, NULL, 6, NULL);
+		xTaskCreate(&wifi_secure_rx_cmd_task, "wifi_secure_rx_cmd_task", 2048*3, NULL, 6, NULL);
+	#else
+		xTaskCreate(&mqtt_publish_task, "mqtt_publish_task", 2048, NULL, 6, NULL);
+		xTaskCreate(&mqtt_rx_task, "mqtt_rx_task", 2048, NULL, 6, NULL);
+	#endif
 
-	// xTaskCreate(&wifi_secure_tx_task, "wifi_secure_tx_task", 2048*3, NULL, 6, NULL);
-	// xTaskCreate(&wifi_secure_rx_cmd_task, "wifi_secure_rx_cmd_task", 2048*3, NULL, 6, NULL);
-
-	xTaskCreate(&mqtt_publish_task, "mqtt_publish_task", 2048, NULL, 6, NULL);
-	xTaskCreate(&mqtt_rx_task, "mqtt_rx_task", 2048, NULL, 6, NULL);
 
 	// create the rest of the tasks with priority lower than wifi task
 	xTaskCreate(&command_processor_task, "command_processor_task", 2048, NULL, 5, NULL);

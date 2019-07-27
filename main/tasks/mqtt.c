@@ -22,21 +22,23 @@
 #include "mqtt_client.h"
 
 /* ===== Macros of private constants ===== */
-#define CONFIG_BROKER_URI "mqtts://mqtt.thingspeak.com:8883"
-#define MQTT_PUBLISH_TOPIC "channels/776064/publish/fields/field1/2WBYREDTIXQ6X9PF"
-#define MQTT_SUBSCRIBE_TOPIC "channels/776064/subscribe/fields/field2/E5V8ERAC6B0Y8160"
-#define MQTT_USERNAME "mbrignone"
-#define MQTT_PASSWORD "FP650XEYQ5XX0NY7"
-#define BINARY_CERTIFICATE_START "_binary_thingspeak_mqtts_certificate_pem_start"
-#define BINARY_CERTIFICATE_END "_binary_thingspeak_mqtts_certificate_pem_end"
-
-// #define CONFIG_BROKER_URI "mqtts://io.adafruit.com:8883"
-// #define MQTT_PUBLISH_TOPIC "mbrignone/feeds/test-example"
-// #define MQTT_SUBSCRIBE_TOPIC "mbrignone/feeds/test-example"
-// #define MQTT_USERNAME "mbrignone"
-// #define MQTT_PASSWORD "01d6fd13e8af4ed3b30f580e945f5561"
-// #define BINARY_CERTIFICATE_START "_binary_adafruit_mqtts_certificate_pem_start"
-// #define BINARY_CERTIFICATE_END "_binary_adafruit_mqtts_certificate_pem_end"
+#if MQTT_BROKER == thingspeak
+	#define CONFIG_BROKER_URI "mqtts://mqtt.thingspeak.com:8883"
+	#define MQTT_PUBLISH_TOPIC "channels/776064/publish/fields/field1/2WBYREDTIXQ6X9PF"
+	#define MQTT_SUBSCRIBE_TOPIC "channels/776064/subscribe/fields/field2/E5V8ERAC6B0Y8160"
+	#define MQTT_USERNAME "mbrignone"
+	#define MQTT_PASSWORD "FP650XEYQ5XX0NY7"
+	#define BINARY_CERTIFICATE_START "_binary_thingspeak_mqtts_certificate_pem_start"
+	#define BINARY_CERTIFICATE_END "_binary_thingspeak_mqtts_certificate_pem_end"
+#elif MQTT_BROKER == adafruit
+	#define CONFIG_BROKER_URI "mqtts://io.adafruit.com:8883"
+	#define MQTT_PUBLISH_TOPIC "mbrignone/feeds/test-example"
+	#define MQTT_SUBSCRIBE_TOPIC "mbrignone/feeds/test-example"
+	#define MQTT_USERNAME "mbrignone"
+	#define MQTT_PASSWORD "01d6fd13e8af4ed3b30f580e945f5561"
+	#define BINARY_CERTIFICATE_START "_binary_adafruit_mqtts_certificate_pem_start"
+	#define BINARY_CERTIFICATE_END "_binary_adafruit_mqtts_certificate_pem_end"
+#endif
 
 
 /* ===== Declaration of private or external variables ===== */

@@ -85,12 +85,12 @@ void wifi_tx_task(void *pvParameter)
 	char content_buf[RX_BUFFER_SIZE];
 	
 	// resolve the IP of the target website
-	int result = getaddrinfo(CONFIG_WEBSITE, "80", &hints, &res);
+	int result = getaddrinfo(CONFIG_HTTP_WEBSITE, "80", &hints, &res);
 	if((result != 0) || (res == NULL)) {
-		printf("Unable to resolve IP for target website %s\n", CONFIG_WEBSITE);
+		printf("Unable to resolve IP for target website %s\n", CONFIG_HTTP_WEBSITE);
 		while(1) vTaskDelay(1000 / portTICK_RATE_MS);
 	}
-	printf("Target website's IP resolved for %s\n", CONFIG_WEBSITE);
+	printf("Target website's IP resolved for %s\n", CONFIG_HTTP_WEBSITE);
 
 	BaseType_t xStatus;
 	xStatus = xQueueSendToBack(queue_wifi_tx_to_rx, &res, 0);
@@ -187,6 +187,9 @@ void wifi_rx_cmd_task(void * pvParameter)
 		// always wait for connection
 		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 
+		// printf("Free HEAP: %d\n", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+		// heap_caps_get_minimum_free_size
+
 		printf("\nChecking if there is any new command to execute.\n");
 
 		// create a new socket
@@ -194,6 +197,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 		int request_status = send_http_request(s, res, HTTP_REQUEST_READ_CMD);
 		if (request_status < 0)
 		{
+			vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS);
 			continue;
 		}
 		

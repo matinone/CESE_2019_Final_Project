@@ -28,7 +28,7 @@
 /* ===== Macros of private constants ===== */
 #define COMMAND_RX_CHECK_PERIOD 15000
 
-#define WEB_SERVER "www.thingspeak.com"
+#define WEB_SERVER CONFIG_HTTPS_WEBSITE
 #define WEB_PORT "443"
 
 #define RX_BUFFER_SIZE 128

@@ -1,4 +1,4 @@
-menu "WiFi/HTTP configuration"
+menu "WiFi configuration"
 
 	config WIFI_SSID
 		string "WIFI Network SSID"
@@ -10,10 +10,28 @@ menu "WiFi/HTTP configuration"
 		help
 			Enter the password of the wifi network
 
-	config WEBSITE
-		string "Target website"
-		default "www.google.com"
+	config APP_PROTOCOL
+		string "Application Protocol (HTTP/HTTPS/MQTT)"
+		default "HTTP"
 		help
-			Enter the address of the target website
+			Enter the Application Protocol (HTTP, HTTPS or MQTT)
+
+	config HTTP_WEBSITE
+		string "HTTP target"
+		default "api.thingspeak.com"
+		help
+			Enter the address of the target website (for HTTP only)
+
+	config HTTPS_WEBSITE
+		string "HTTPS target"
+		default "www.thingspeak.com"
+		help
+			Enter the address of the target website (for HTTPS only)
+
+	config MQTT_BROKER
+		string "MQTT broker"
+		default "thingspeak"
+		help
+			Enter the name of the MQTT broker (thingspeak or adafruit)
 	
 endmenu
