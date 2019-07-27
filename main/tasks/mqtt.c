@@ -23,17 +23,31 @@
 
 /* ===== Macros of private constants ===== */
 #define CONFIG_BROKER_URI "mqtts://mqtt.thingspeak.com:8883"
+#define MQTT_PUBLISH_TOPIC "channels/776064/publish/fields/field1/2WBYREDTIXQ6X9PF"
+#define MQTT_SUBSCRIBE_TOPIC "channels/776064/subscribe/fields/field2/E5V8ERAC6B0Y8160"
+#define MQTT_USERNAME "mbrignone"
+#define MQTT_PASSWORD "FP650XEYQ5XX0NY7"
+#define BINARY_CERTIFICATE_START "_binary_thingspeak_mqtts_certificate_pem_start"
+#define BINARY_CERTIFICATE_END "_binary_thingspeak_mqtts_certificate_pem_end"
+
+// #define CONFIG_BROKER_URI "mqtts://io.adafruit.com:8883"
+// #define MQTT_PUBLISH_TOPIC "mbrignone/feeds/test-example"
+// #define MQTT_SUBSCRIBE_TOPIC "mbrignone/feeds/test-example"
+// #define MQTT_USERNAME "mbrignone"
+// #define MQTT_PASSWORD "01d6fd13e8af4ed3b30f580e945f5561"
+// #define BINARY_CERTIFICATE_START "_binary_adafruit_mqtts_certificate_pem_start"
+// #define BINARY_CERTIFICATE_END "_binary_adafruit_mqtts_certificate_pem_end"
 
 
 /* ===== Declaration of private or external variables ===== */
 extern EventGroupHandle_t wifi_event_group;
 extern QueueHandle_t queue_command_processor_rx;
 
-extern const uint8_t thingspeak_mqtts_cert_start[] asm("_binary_thingspeak_mqtts_certificate_pem_start");
-extern const uint8_t thingspeak_mqtts_cert_end[]   asm("_binary_thingspeak_mqtts_certificate_pem_end");
+extern const uint8_t thingspeak_mqtts_cert_start[] asm(BINARY_CERTIFICATE_START);
+extern const uint8_t thingspeak_mqtts_cert_end[]   asm(BINARY_CERTIFICATE_END);
 static const char *TAG = "MQTTS_TASK";
-static char* mqtt_publish_topic = "channels/776064/publish/fields/field1/2WBYREDTIXQ6X9PF";
-static char* mqtt_subscribe_topic = "channels/776064/subscribe/fields/field2/E5V8ERAC6B0Y8160";
+static char* mqtt_publish_topic = MQTT_PUBLISH_TOPIC;
+static char* mqtt_subscribe_topic = MQTT_SUBSCRIBE_TOPIC;
 
 const int WIFI_CONNECTED_BIT = BIT0;
 const int MQTT_CONNECTED_BIT = BIT1;
@@ -73,8 +87,8 @@ void mqtt_publish_task(void *pvParameter)
 		.uri = CONFIG_BROKER_URI,
 		.event_handle = mqtt_event_handler,
 		.cert_pem = (const char *)thingspeak_mqtts_cert_start,
-		.username = "mbrignone",
-		.password = "FP650XEYQ5XX0NY7",
+		.username = MQTT_USERNAME,
+		.password = MQTT_PASSWORD,
 		.disable_clean_session = 0,
 	};
 
