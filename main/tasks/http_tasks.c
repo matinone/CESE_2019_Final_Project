@@ -101,6 +101,7 @@ void wifi_tx_task(void *pvParameter)
 
 	uint8_t queue_rcv_value;
 	char request_buffer[strlen(HTTP_REQUEST_WRITE)];
+	int s, request_status;
 
 	while (1)
 	{
@@ -115,8 +116,8 @@ void wifi_tx_task(void *pvParameter)
 			sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
 			
 			// create a new socket
-			int s = lwip_socket(res->ai_family, res->ai_socktype, 0);
-			int request_status = send_http_request(s, res, request_buffer);
+			s = lwip_socket(res->ai_family, res->ai_socktype, 0);
+			request_status = send_http_request(s, res, request_buffer);
 			if (request_status < 0)
 			{
 				continue;
@@ -129,7 +130,7 @@ void wifi_tx_task(void *pvParameter)
 			flag_rsp_ok = receive_http_response(s, recv_buf, content_buf, RX_BUFFER_SIZE);
 
 			// close socket after receiving the response
-			lwip_close(s);
+			lwip_close_r(s);
 
 			if (flag_rsp_ok == 1)
 			{
@@ -170,6 +171,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 	char recv_buf[RX_BUFFER_SIZE];
 	char content_buf[RX_BUFFER_SIZE];
 	char * pch;
+	int s, request_status;
 	// command to send to the command processor
 	rx_command_t http_command;
     http_command.rx_id = HTTP_RX;
@@ -187,14 +189,11 @@ void wifi_rx_cmd_task(void * pvParameter)
 		// always wait for connection
 		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 
-		// printf("Free HEAP: %d\n", heap_caps_get_free_size(MALLOC_CAP_8BIT));
-		// heap_caps_get_minimum_free_size
-
 		printf("\nChecking if there is any new command to execute.\n");
 
 		// create a new socket
-		int s = socket(res->ai_family, res->ai_socktype, 0);
-		int request_status = send_http_request(s, res, HTTP_REQUEST_READ_CMD);
+		s = lwip_socket(res->ai_family, res->ai_socktype, 0);
+		request_status = send_http_request(s, res, HTTP_REQUEST_READ_CMD);
 		if (request_status < 0)
 		{
 			vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS);
@@ -207,7 +206,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 		flag_rsp_ok = receive_http_response(s, recv_buf, content_buf, RX_BUFFER_SIZE);
 
 		// close socket after receiving the response
-		lwip_close(s);
+		lwip_close_r(s);
 
 		if (flag_rsp_ok == 1)
 		{

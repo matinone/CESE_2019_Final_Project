@@ -45,7 +45,7 @@ int send_http_request(int socket_handler, struct addrinfo* res, char* http_reque
 	int con_result = lwip_connect(socket_handler, res->ai_addr, res->ai_addrlen);
 	if(con_result != 0) {
 		printf("Unable to connect to the target website, not sending to ThingSpeak the received data.\n");
-		lwip_close(socket_handler);
+		lwip_close_r(socket_handler);
 		return -1;
 	}
 	// printf("Connected to the target website.\n");
@@ -54,7 +54,7 @@ int send_http_request(int socket_handler, struct addrinfo* res, char* http_reque
 	int result = lwip_write(socket_handler, http_request, strlen(http_request));
 	if(result < 0) {
 		printf("Unable to send the HTTP request, not sending to ThingSpeak the received data.\n");
-		lwip_close(socket_handler);
+		lwip_close_r(socket_handler);
 		return -1;
 	}
 	// printf("HTTP request sent:  %s\n", http_request);
