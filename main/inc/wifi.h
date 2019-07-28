@@ -12,7 +12,7 @@
 
 /* ===== Dependencies ===== */
 #include <stdint.h>
-
+#include "esp_wifi.h"
 
 /* ===== Macros of public constants ===== */
 #define MAX_WIFI_CONNECT_RETRY 10
@@ -30,10 +30,11 @@
 |
 |  Parameters:
 |		- first_time: flag to be used the first time it is called.
+|		- wifi_mode: WiFi mode to initialize
 |
 |  Returns:  void
 *-------------------------------------------------------------------*/
-void initialize_wifi(uint8_t first_time);
+void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode);
 
 
 /*------------------------------------------------------------------

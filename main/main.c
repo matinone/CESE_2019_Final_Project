@@ -53,7 +53,7 @@ void app_main()
     }
     ESP_ERROR_CHECK(return_value);
 
-	initialize_wifi(1);
+	initialize_wifi(1, WIFI_MODE_APSTA);
 	initialize_uart();
 	initialize_command_processor(wifi_module);
 

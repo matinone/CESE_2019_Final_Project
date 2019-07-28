@@ -89,7 +89,7 @@ void command_processor_task(void *pvParameter)
                         case BLE_MODE:
                             printf("Stopping BLE server and starting WiFi.\n");
                             stop_ble_server();
-                            initialize_wifi(0);
+                            initialize_wifi(0, WIFI_MODE_APSTA);
                             if (wifi_module == MQTT_RX)
                             {
                                 start_custom_mqtt_client();
@@ -98,7 +98,7 @@ void command_processor_task(void *pvParameter)
                             break;
                         case OFFLINE_MODE:
                             printf("Starting WiFi.\n");
-                            initialize_wifi(0);
+                            initialize_wifi(0, WIFI_MODE_APSTA);
                             if (wifi_module == MQTT_RX)
                             {
                                 start_custom_mqtt_client();
