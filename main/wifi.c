@@ -8,6 +8,7 @@
 
 /* ===== Dependencies ===== */
 #include "wifi.h"
+#include "http_server.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -164,6 +165,11 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 	// AP EVENTS
 	case SYSTEM_EVENT_AP_START:
 		// start web server and mDNS here (or somewhere else using this bit)
+		// start the HTTP server task
+		
+		xTaskCreate(&http_server, "http_server", 20000, NULL, 6, NULL);
+		printf("HTTP server started\n");
+
 		break;
 
 	case SYSTEM_EVENT_AP_STACONNECTED:
