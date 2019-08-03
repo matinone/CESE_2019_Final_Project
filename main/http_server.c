@@ -17,8 +17,7 @@
 // HTTP headers and web pages
 const static char http_html_hdr[] = "HTTP/1.1 200 OK\nContent-type: text/html\n\n";
 const static char http_png_hdr[] = "HTTP/1.1 200 OK\nContent-type: image/png\n\n";
-// const static char http_off_hml[] = "<meta content=\"width=device-width,initial-scale=1\"name=viewport><style>div{width:230px;height:300px;position:absolute;top:0;bottom:0;left:0;right:0;margin:auto}</style><link rel=\"icon\" href=\"data:;base64,=\"><div><h1 align=center>Relay is OFF</h1><a href=on.html><img src=on.png></a></div>";
-const static char http_off_hml[] = "<HTML>"
+const static char http_wifi_hml[] = "<HTML>"
     "<HEAD>"
         "<TITLE>ESP32 Web Server</TITLE>"
 "<meta content=\"width=device-width,initial-scale=1\"name=viewport>"
@@ -28,31 +27,24 @@ const static char http_off_hml[] = "<HTML>"
 "<BODY>"
     "<CENTER>"
 "<div>"
-"<h1 align=center>Pagina principal</h1><a href=on.html><img src=on.png></a><a href=hola.html>Texto de prueba</a>"
+"<h1 align=center>ESP32 WiFi Credentials</h1><a href=off.html><img src=on.png></a>"
     "<form action=\"/form_page\" method=\"post\">"
-        "First name: <input type=\"text\" name=\"fname\"><br>"
-        "Last name: <input type=\"text\" name=\"lname\"><br>"
-        "<input type=\"submit\" value=\"Submit\">"
+        "SSID: <input type=\"text\" name=\"ssid\"><br>"
+        "Password: <input type=\"text\" name=\"password\"><br>"
+        "<input type=\"submit\" value=\"Connect to WiFi\">"
     "</form>"
 "</div>"
     "</CENTER>" 
 "</BODY>"
 "</HTML>";
 
-
-const static char http_on_hml[] = "<meta content=\"width=device-width,initial-scale=1\"name=viewport><style>div{width:230px;height:300px;position:absolute;top:0;bottom:0;left:0;right:0;margin:auto}</style><link rel=\"icon\" href=\"data:;base64,=\"><div><h1 align=center>Relay is ON</h1><a href=off.html><img src=off.png></a></div>"; 
-
 // embedded binary data
 extern const uint8_t on_png_start[] asm("_binary_on_png_start");
 extern const uint8_t on_png_end[]   asm("_binary_on_png_end");
-extern const uint8_t off_png_start[] asm("_binary_off_png_start");
-extern const uint8_t off_png_end[]   asm("_binary_off_png_end");
-
-// actual relay status
-bool relay_status;
+// extern const uint8_t off_png_start[] asm("_binary_off_png_start");
+// extern const uint8_t off_png_end[]   asm("_binary_off_png_end");
 
 static void http_server_netconn_serve(struct netconn *conn);
-
 
 // HTTP server task
 void http_server(void *pvParameters) 
@@ -100,30 +92,15 @@ static void http_server_netconn_serve(struct netconn *conn)
                 if(strcmp(req->resource, "/") == 0) 
                 {
                     netconn_write(conn, http_html_hdr, sizeof(http_html_hdr) - 1, NETCONN_NOCOPY);
-                    if(relay_status) 
-                    {
-                        printf("Sending default page, relay is ON\n");
-                        netconn_write(conn, http_on_hml, sizeof(http_on_hml) - 1, NETCONN_NOCOPY);
-                    }                   
-                    else 
-                    {
-                        printf("Sending default page, relay is OFF\n");
-                        netconn_write(conn, http_off_hml, sizeof(http_off_hml) - 1, NETCONN_NOCOPY);
-                    }
-                }
-                // ON page
-                else if(strcmp(req->resource, "/on.html") == 0) 
-                {
-                    printf("Sending ON page...\n");
-                    netconn_write(conn, http_html_hdr, sizeof(http_html_hdr) - 1, NETCONN_NOCOPY);
-                    netconn_write(conn, http_on_hml, sizeof(http_on_hml) - 1, NETCONN_NOCOPY);
-                }           
+                    printf("Sending default page, relay is OFF\n");
+                    netconn_write(conn, http_wifi_hml, sizeof(http_wifi_hml) - 1, NETCONN_NOCOPY);
+                }         
                 // OFF page
                 else if(strcmp(req->resource, "/off.html") == 0) 
                 {
                     printf("Sending OFF page...\n");
                     netconn_write(conn, http_html_hdr, sizeof(http_html_hdr) - 1, NETCONN_NOCOPY);
-                    netconn_write(conn, http_off_hml, sizeof(http_off_hml) - 1, NETCONN_NOCOPY);
+                    netconn_write(conn, http_wifi_hml, sizeof(http_wifi_hml) - 1, NETCONN_NOCOPY);
                 }
                 // ON image
                 else if(strcmp(req->resource, "/on.png") == 0) 
@@ -131,20 +108,6 @@ static void http_server_netconn_serve(struct netconn *conn)
                     printf("Sending ON image...\n");
                     netconn_write(conn, http_png_hdr, sizeof(http_png_hdr) - 1, NETCONN_NOCOPY);
                     netconn_write(conn, on_png_start, on_png_end - on_png_start, NETCONN_NOCOPY);
-                }
-                // OFF image
-                else if(strcmp(req->resource, "/off.png") == 0) 
-                {
-                    printf("Sending OFF image...\n");
-                    netconn_write(conn, http_png_hdr, sizeof(http_png_hdr) - 1, NETCONN_NOCOPY);
-                    netconn_write(conn, off_png_start, off_png_end - off_png_start, NETCONN_NOCOPY);
-                }
-                // hola ref
-                else if(strcmp(req->resource, "/hola.html") == 0) 
-                {
-                    printf("Sending nothing, someone just clicked the link...\n");
-                    netconn_write(conn, http_png_hdr, sizeof(http_png_hdr) - 1, NETCONN_NOCOPY);
-                    netconn_write(conn, off_png_start, off_png_end - off_png_start, NETCONN_NOCOPY);
                 }
                 else
                 {
@@ -159,7 +122,7 @@ static void http_server_netconn_serve(struct netconn *conn)
                     printf("Received form with body: \n");
                     puts(req->body);
                     netconn_write(conn, http_html_hdr, sizeof(http_html_hdr) - 1, NETCONN_NOCOPY);
-                    netconn_write(conn, http_off_hml, sizeof(http_off_hml) - 1, NETCONN_NOCOPY);
+                    netconn_write(conn, http_wifi_hml, sizeof(http_wifi_hml) - 1, NETCONN_NOCOPY);
                 }
                 else
                 {
