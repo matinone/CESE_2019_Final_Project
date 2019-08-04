@@ -1,8 +1,25 @@
+/* ===== [custom_http_parser.c] =====
+ * Copyright Matias Brignone <mnbrignone@gmail.com>
+ * All rights reserved.
+ *
+ * Version: 0.1.0
+ * Creation Date: 2019
+ */
+
+
+/* ===== Dependencies ===== */
 #include "custom_http_parser.h"
 
 #include <stdlib.h>
 #include <string.h>
 
+/* ===== Macros of private constants ===== */
+
+/* ===== Declaration of private or external variables ===== */
+
+/* ===== Prototypes of private functions ===== */
+
+/* ===== Implementations of public functions ===== */
 http_request_t* parse_http_request(const char* raw, uint16_t raw_len) 
 {
     const char* initial_raw;
@@ -145,3 +162,5 @@ void free_request(http_request_t* req) {
         free(req);
     }
 }
+
+/* ===== Implementations of private functions ===== */

@@ -1,12 +1,29 @@
+/* ===== [nvs_storage.c] =====
+ * Copyright Matias Brignone <mnbrignone@gmail.com>
+ * All rights reserved.
+ *
+ * Version: 0.1.0
+ * Creation Date: 2019
+ */
+
+
+/* ===== Dependencies ===== */
 #include "nvs_storage.h"
 
 #include "esp_partition.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 
-// NVS handler
-nvs_handle storage_nvs_handler;
+/* ===== Macros of private constants ===== */
 
+
+/* ===== Declaration of private or external variables ===== */
+nvs_handle storage_nvs_handler; // NVS handler
+
+/* ===== Prototypes of private functions ===== */
+
+
+/* ===== Implementations of public functions ===== */
 esp_err_t init_nvs_storage(uint8_t storage)
 {
     // initialize NVS
@@ -62,3 +79,5 @@ esp_err_t set_nvs_string_value(char* string_key, char* string_value)
 {
     return nvs_set_str(storage_nvs_handler, string_key, string_value);
 }
+
+/* ===== Implementations of private functions ===== */

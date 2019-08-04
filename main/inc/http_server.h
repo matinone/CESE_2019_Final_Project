@@ -18,6 +18,18 @@
 /* ===== Public structs and enums ===== */
 
 /* ===== Prototypes of public functions ===== */
+/*------------------------------------------------------------------
+|  Function: http_server
+| ------------------------------------------------------------------
+|  Description: FreeRTOS task for the HTTP server. It processes
+|				all the incoming requests and responds to them.
+|
+|  Parameters:
+|		- pvParameter: void pointer used as task parameter during
+|					   task creation.
+|
+|  Returns:  void
+*-------------------------------------------------------------------*/
 void http_server(void *pvParameters);
 
 

@@ -47,7 +47,7 @@ typedef struct {
 |
 |  Parameters:
 |		- first_time: flag to be used the first time it is called.
-|		- wifi_mode: WiFi mode to initialize
+|		- wifi_mode: WiFi mode to initialize.
 |
 |  Returns:  void
 *-------------------------------------------------------------------*/
@@ -75,7 +75,7 @@ void stop_wifi();
 |		-
 |
 |  Returns: wifi_credential_t* - pointer to the current WiFi
-|								 credentials
+|								 credentials.
 *-------------------------------------------------------------------*/
 wifi_credential_t* get_current_wifi_credentials();
 
@@ -86,7 +86,7 @@ wifi_credential_t* get_current_wifi_credentials();
 |
 |  Parameters:
 |		- char* ssid: new WiFi SSID.
-|		- char* password: new WiFi password
+|		- char* password: new WiFi password.
 |
 |  Returns: void
 *-------------------------------------------------------------------*/
