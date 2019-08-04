@@ -46,6 +46,7 @@ extern const uint8_t on_png_end[]   asm("_binary_on_png_end");
 // extern const uint8_t off_png_end[]   asm("_binary_off_png_end");
 
 static void http_server_netconn_serve(struct netconn *conn);
+static char* recover_encoded_spaces(char* encoded_string);
 
 // HTTP server task
 void http_server(void *pvParameters) 
@@ -94,20 +95,20 @@ static void http_server_netconn_serve(struct netconn *conn)
                 if(strcmp(req->resource, "/") == 0) 
                 {
                     netconn_write(conn, http_html_hdr, sizeof(http_html_hdr) - 1, NETCONN_NOCOPY);
-                    printf("Sending default page, relay is OFF\n");
+                    // printf("Sending default page, relay is OFF\n");
                     netconn_write(conn, http_wifi_hml, sizeof(http_wifi_hml) - 1, NETCONN_NOCOPY);
                 }         
                 // OFF page
                 else if(strcmp(req->resource, "/off.html") == 0) 
                 {
-                    printf("Sending OFF page...\n");
+                    // printf("Sending OFF page...\n");
                     netconn_write(conn, http_html_hdr, sizeof(http_html_hdr) - 1, NETCONN_NOCOPY);
                     netconn_write(conn, http_wifi_hml, sizeof(http_wifi_hml) - 1, NETCONN_NOCOPY);
                 }
                 // ON image
                 else if(strcmp(req->resource, "/on.png") == 0) 
                 {
-                    printf("Sending ON image...\n");
+                    // printf("Sending ON image...\n");
                     netconn_write(conn, http_png_hdr, sizeof(http_png_hdr) - 1, NETCONN_NOCOPY);
                     netconn_write(conn, on_png_start, on_png_end - on_png_start, NETCONN_NOCOPY);
                 }
@@ -122,6 +123,7 @@ static void http_server_netconn_serve(struct netconn *conn)
                 if(strcmp(req->resource, "/form_page") == 0) 
                 {
                     printf("Received form with body: \n");
+                    recover_encoded_spaces(req->body);
                     puts(req->body);
                     netconn_write(conn, http_html_hdr, sizeof(http_html_hdr) - 1, NETCONN_NOCOPY);
                     netconn_write(conn, http_wifi_hml, sizeof(http_wifi_hml) - 1, NETCONN_NOCOPY);
@@ -159,4 +161,17 @@ static void http_server_netconn_serve(struct netconn *conn)
     // close the connection and free the buffer
     netconn_close(conn);
     netbuf_delete(inbuf);
+}
+
+static char* recover_encoded_spaces(char* encoded_string)
+{
+    for(int i=0; i<strlen(encoded_string); i++)
+    {
+        if (*(encoded_string+i) == '+')
+        {
+            *(encoded_string+i) = ' ';
+        }
+    }
+
+    return encoded_string;
 }

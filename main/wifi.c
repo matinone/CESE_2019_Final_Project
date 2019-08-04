@@ -22,10 +22,9 @@
 
 
 /* ===== Macros of private constants ===== */
-#define ASSOC_LEAVE 8
 #define CONFIG_AP_SSID				"ESP32_AP"
 #define CONFIG_AP_PASSWORD			"esp32_ap"
-#define CONFIG_AP_MAX_CONNECTIONS	4
+#define CONFIG_AP_MAX_CONNECTIONS	1
 
 /* ===== Declaration of private or external variables ===== */
 EventGroupHandle_t wifi_event_group;	// event group to synchronize the WIFI TASK with the WIFI DRIVER events
@@ -34,7 +33,6 @@ static int connect_retry_num = 0;
 static const int CONNECTED_BIT 			= BIT0;
 static const int STA_CONNECTED_BIT 		= BIT2;
 static const int STA_DISCONNECTED_BIT	= BIT3;
-// static const char *TAG = "WIFI_TASK";
 
 wifi_credential_t current_wifi_credentials = {
 		.ssid = CONFIG_WIFI_SSID,
@@ -163,11 +161,21 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 	
 	case SYSTEM_EVENT_STA_DISCONNECTED:
 		// reason == ASSOC_LEAVE means that esp_wifi_disconnect() was called
-		if (event->event_info.disconnected.reason != ASSOC_LEAVE)
+		if (event->event_info.disconnected.reason == WIFI_REASON_ASSOC_LEAVE)
+		{
+			printf("WiFi intentionally disconnected, not trying to reconnect.\n");
+		}
+		else if (event->event_info.disconnected.reason == WIFI_REASON_AUTH_FAIL || 
+			event->event_info.disconnected.reason == WIFI_REASON_NO_AP_FOUND)
+		{
+			printf("Authentication failed while trying to connect (wrong SSID or password).\n");
+		}
+		else
 		{
 			if (connect_retry_num < MAX_WIFI_CONNECT_RETRY)
 			{
-				printf("WiFi disconnected, trying to reconnect %d/%d.\n", connect_retry_num+1, MAX_WIFI_CONNECT_RETRY);
+				printf("WiFi disconnected (reason code %d), trying to reconnect %d/%d.\n", 
+					event->event_info.disconnected.reason, connect_retry_num+1, MAX_WIFI_CONNECT_RETRY);
 				connect_retry_num++;
 				esp_wifi_connect();
 			}
@@ -175,10 +183,6 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 			{
 				printf("WiFi tried to reconnect %d times and failed. Not trying anymore.\n", MAX_WIFI_CONNECT_RETRY);
 			}
-		}
-		else
-		{
-			printf("WiFi intentionally disconnected, not trying to reconnect.\n");
 		}
 		xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
 		break;
@@ -195,11 +199,22 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 
 	case SYSTEM_EVENT_AP_STACONNECTED:
 		printf("New station connected to AP.\n");
+		if ( (xEventGroupGetBits(wifi_event_group) & CONNECTED_BIT) != 0 )
+		{
+			printf("Disconnecting station from Access Point.\n");
+			esp_wifi_disconnect();
+		}
+		
 		xEventGroupSetBits(wifi_event_group, STA_CONNECTED_BIT);
 		break;
 
 	case SYSTEM_EVENT_AP_STADISCONNECTED:
 		printf("A station disconnected.\n");
+		if ( (xEventGroupGetBits(wifi_event_group) & CONNECTED_BIT) == 0 )
+		{
+			printf("Reconnecting station to Access Point.\n");
+			esp_wifi_connect();
+		}
 		xEventGroupSetBits(wifi_event_group, STA_DISCONNECTED_BIT);
 		break;
 
