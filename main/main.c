@@ -54,7 +54,8 @@ void app_main()
 		.ssid = CONFIG_WIFI_SSID,
 		.password = CONFIG_WIFI_PASSWORD,
 	};
-	initialize_wifi(1, WIFI_MODE_APSTA, &wifi_credential);
+	set_current_wifi_credentials(&wifi_credential);
+	initialize_wifi(WIFI_FIRST_CONFIG, WIFI_MODE_APSTA, &wifi_credential);
 	initialize_uart();
 	initialize_command_processor(wifi_module);
 

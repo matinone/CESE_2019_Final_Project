@@ -65,11 +65,6 @@ void command_processor_task(void *pvParameter)
     BaseType_t xStatus;
     QueueHandle_t* generic_queue_handle_ptr;
 
-    wifi_credential_t wifi_credential = {
-        .ssid = CONFIG_WIFI_SSID,
-        .password = CONFIG_WIFI_PASSWORD,
-    };
-
     while (1)
     {
         // read data from the queue
@@ -104,7 +99,7 @@ void command_processor_task(void *pvParameter)
                         case BLE_MODE:
                             printf("Stopping BLE server and starting WiFi.\n");
                             stop_ble_server();
-                            initialize_wifi(0, WIFI_MODE_APSTA, &wifi_credential);
+                            initialize_wifi(0, WIFI_MODE_APSTA, get_current_wifi_credentials());
                             if (wifi_module == MQTT_RX)
                             {
                                 start_custom_mqtt_client();
@@ -113,7 +108,7 @@ void command_processor_task(void *pvParameter)
                             break;
                         case OFFLINE_MODE:
                             printf("Starting WiFi.\n");
-                            initialize_wifi(0, WIFI_MODE_APSTA, &wifi_credential);
+                            initialize_wifi(0, WIFI_MODE_APSTA, get_current_wifi_credentials());
                             if (wifi_module == MQTT_RX)
                             {
                                 start_custom_mqtt_client();

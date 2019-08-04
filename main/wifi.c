@@ -36,6 +36,10 @@ static const int STA_CONNECTED_BIT 		= BIT2;
 static const int STA_DISCONNECTED_BIT	= BIT3;
 // static const char *TAG = "WIFI_TASK";
 
+wifi_credential_t current_wifi_credentials = {
+		.ssid = CONFIG_WIFI_SSID,
+		.password = CONFIG_WIFI_PASSWORD,
+};
 
 /* ===== Prototypes of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
@@ -92,8 +96,8 @@ void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode, wifi_credential_
 				.password = "dummy_password",
 			},
 		};
-		memcpy(wifi_sta_config.sta.ssid, wifi_credential->ssid, 32);
-		memcpy(wifi_sta_config.sta.password, wifi_credential->password, 64);
+		memcpy(wifi_sta_config.sta.ssid, wifi_credential->ssid, MAX_WIFI_SSID_SIZE);
+		memcpy(wifi_sta_config.sta.password, wifi_credential->password, MAX_WIFI_PASSWORD_SIZE);
 
 		ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_sta_config));
 	}
@@ -129,6 +133,18 @@ void stop_wifi()
 	esp_wifi_deinit();
 }
 
+
+wifi_credential_t* get_current_wifi_credentials()
+{
+	return &current_wifi_credentials;
+}
+
+void set_current_wifi_credentials(wifi_credential_t* new_wifi_credential)
+{
+	memcpy(current_wifi_credentials.ssid, new_wifi_credential->ssid, MAX_WIFI_SSID_SIZE);
+	memcpy(current_wifi_credentials.password, new_wifi_credential->password, MAX_WIFI_PASSWORD_SIZE);
+}
+
 /* ===== Implementations of private functions ===== */
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 {
@@ -136,6 +152,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 
 	// STA EVENTS
 	case SYSTEM_EVENT_STA_START:
+		connect_retry_num = 0;
 		esp_wifi_connect();
 		break;
 	

@@ -15,7 +15,10 @@
 #include "esp_wifi.h"
 
 /* ===== Macros of public constants ===== */
-#define MAX_WIFI_CONNECT_RETRY 10
+#define WIFI_FIRST_CONFIG		1
+#define MAX_WIFI_CONNECT_RETRY 	10
+#define MAX_WIFI_SSID_SIZE 		32
+#define MAX_WIFI_PASSWORD_SIZE 	64
 
 /* ===== Public structs and enums ===== */
 typedef struct {
@@ -52,6 +55,31 @@ void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode, wifi_credential_
 |  Returns:  void
 *-------------------------------------------------------------------*/
 void stop_wifi();
+
+/*------------------------------------------------------------------
+|  Function: get_current_wifi_credentials
+| ------------------------------------------------------------------
+|  Description: returns the current WiFi credentials.
+|
+|  Parameters:
+|		-
+|
+|  Returns: wifi_credential_t* - pointer to the current WiFi
+|								 credentials
+*-------------------------------------------------------------------*/
+wifi_credential_t* get_current_wifi_credentials();
+
+/*------------------------------------------------------------------
+|  Function: set_current_wifi_credentials
+| ------------------------------------------------------------------
+|  Description: sets the current WiFi credentials.
+|
+|  Parameters:
+|		- wifi_credential_t* : pointer to the new WiFi credentials.
+|
+|  Returns: void
+*-------------------------------------------------------------------*/
+void set_current_wifi_credentials(wifi_credential_t* new_wifi_credential);
 
 
 /* ===== Avoid multiple inclusion ===== */
