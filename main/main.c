@@ -35,6 +35,7 @@
 
 #include "ble_server.h"
 #include "command_processor.h"
+#include "nvs_storage.h"
 
 // main application
 void app_main()
@@ -46,11 +47,7 @@ void app_main()
 	esp_log_level_set("wifi", ESP_LOG_NONE);
 
     // initialize NVS (Non Volatile Storage), restart system if the initialization fails
-    return_value = nvs_flash_init();
-    if (return_value == ESP_ERR_NVS_NO_FREE_PAGES || return_value == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        return_value = nvs_flash_init();
-    }
+    return_value = init_nvs_storage(INCLUDE_NVS_STORAGE);
     ESP_ERROR_CHECK(return_value);
 
 	initialize_wifi(1, WIFI_MODE_APSTA);

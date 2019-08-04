@@ -1,5 +1,6 @@
 #include "http_server.h"
 #include "http_parser.h"
+#include "nvs_storage.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -77,6 +78,7 @@ static void http_server_netconn_serve(struct netconn *conn)
     char *buf;
     uint16_t buflen;
     err_t err;
+    esp_err_t nvs_error;
 
     err = netconn_recv(conn, &inbuf);
     if (err == ERR_OK) {
@@ -123,6 +125,18 @@ static void http_server_netconn_serve(struct netconn *conn)
                     puts(req->body);
                     netconn_write(conn, http_html_hdr, sizeof(http_html_hdr) - 1, NETCONN_NOCOPY);
                     netconn_write(conn, http_wifi_hml, sizeof(http_wifi_hml) - 1, NETCONN_NOCOPY);
+
+                    char * pch = strtok (req->body,"=&");   // pch here is "ssid"
+                    pch = strtok(NULL, "=&");               // pch here is the ssid value
+                    nvs_error = set_nvs_string_value(WIFI_SSID_NVS_KEY, pch);
+                    pch = strtok(NULL, "=&");               // pch here is "password"
+                    pch = strtok(NULL, "=&");               // pch here is the password value
+                    nvs_error = set_nvs_string_value(WIFI_PASSWORD_NVS_KEY, pch);
+
+                    if (nvs_error != ESP_OK)
+                    {
+                        printf("Error writting WiFi credentials in flash memory\n");
+                    }
                 }
                 else
                 {
