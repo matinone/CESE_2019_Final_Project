@@ -18,6 +18,10 @@
 #define MAX_WIFI_CONNECT_RETRY 10
 
 /* ===== Public structs and enums ===== */
+typedef struct {
+	uint8_t ssid[32];
+	uint8_t password[64];
+} wifi_credential_t;
 
 
 /* ===== Prototypes of public functions ===== */
@@ -34,7 +38,7 @@
 |
 |  Returns:  void
 *-------------------------------------------------------------------*/
-void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode);
+void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode, wifi_credential_t* wifi_credential);
 
 
 /*------------------------------------------------------------------

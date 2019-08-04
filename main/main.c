@@ -46,11 +46,15 @@ void app_main()
 	// disable the default wifi logging
 	esp_log_level_set("wifi", ESP_LOG_NONE);
 
-    // initialize NVS (Non Volatile Storage), restart system if the initialization fails
-    return_value = init_nvs_storage(INCLUDE_NVS_STORAGE);
-    ESP_ERROR_CHECK(return_value);
+	// initialize NVS (Non Volatile Storage), restart system if the initialization fails
+	return_value = init_nvs_storage(INCLUDE_NVS_STORAGE);
+	ESP_ERROR_CHECK(return_value);
 
-	initialize_wifi(1, WIFI_MODE_APSTA);
+	wifi_credential_t wifi_credential = {
+		.ssid = CONFIG_WIFI_SSID,
+		.password = CONFIG_WIFI_PASSWORD,
+	};
+	initialize_wifi(1, WIFI_MODE_APSTA, &wifi_credential);
 	initialize_uart();
 	initialize_command_processor(wifi_module);
 

@@ -42,7 +42,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event);
 
 
 /* ===== Implementations of public functions ===== */
-void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode)
+void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode, wifi_credential_t* wifi_credential)
 {	
 	// initialize the tcp stack
 	tcpip_adapter_init();
@@ -88,10 +88,13 @@ void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode)
 	{
 		wifi_config_t wifi_sta_config = {
 			.sta = {
-				.ssid = CONFIG_WIFI_SSID,
-				.password = CONFIG_WIFI_PASSWORD,
+				.ssid = "dummy_ssid",
+				.password = "dummy_password",
 			},
 		};
+		memcpy(wifi_sta_config.sta.ssid, wifi_credential->ssid, 32);
+		memcpy(wifi_sta_config.sta.password, wifi_credential->password, 64);
+
 		ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_sta_config));
 	}
 
@@ -115,7 +118,7 @@ void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode)
 	}
 
 	ESP_ERROR_CHECK(esp_wifi_start());
-	printf("Connecting to %s.", CONFIG_WIFI_SSID);
+	printf("Connecting to %s.", wifi_credential->ssid);
 }
 
 
@@ -148,6 +151,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 			if (connect_retry_num < MAX_WIFI_CONNECT_RETRY)
 			{
 				printf("WiFi disconnected, trying to reconnect %d/%d.\n", connect_retry_num+1, MAX_WIFI_CONNECT_RETRY);
+				connect_retry_num++;
 				esp_wifi_connect();
 			}
 			else
