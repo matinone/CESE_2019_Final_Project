@@ -82,10 +82,6 @@ void command_processor_task(void *pvParameter)
                     char* nvs_password_value = get_nvs_string_value(WIFI_PASSWORD_NVS_KEY);
 
                     printf("SSID = %s, PASSWORD = %s.\n", nvs_ssid_value, nvs_password_value);
-                    wifi_credential_t new_wifi_credentials;
-                    strncpy((char*)&new_wifi_credentials.ssid[0], nvs_ssid_value, MAX_WIFI_SSID_SIZE);
-                    strncpy((char*)&new_wifi_credentials.password[0], nvs_password_value, MAX_WIFI_PASSWORD_SIZE);
-                    set_current_wifi_credentials(&new_wifi_credentials);
                     // release memory allocated in get methods
                     free(nvs_ssid_value);
                     free(nvs_password_value);

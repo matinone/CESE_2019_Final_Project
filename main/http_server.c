@@ -1,6 +1,7 @@
 #include "http_server.h"
 #include "http_parser.h"
 #include "nvs_storage.h"
+#include "wifi.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -120,6 +121,12 @@ static void http_server_netconn_serve(struct netconn *conn)
                     {
                         printf("Error writting WiFi credentials in flash memory\n");
                     }
+
+                    // restart wifi with new credentials;
+                    set_current_wifi_credentials(get_nvs_string_value(WIFI_SSID_NVS_KEY),
+                                                get_nvs_string_value(WIFI_PASSWORD_NVS_KEY));
+                    stop_wifi();
+                    initialize_wifi(0, WIFI_MODE_APSTA, get_current_wifi_credentials());
                 }
                 else
                 {

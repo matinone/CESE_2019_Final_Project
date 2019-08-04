@@ -137,10 +137,10 @@ wifi_credential_t* get_current_wifi_credentials()
 	return &current_wifi_credentials;
 }
 
-void set_current_wifi_credentials(wifi_credential_t* new_wifi_credential)
+void set_current_wifi_credentials(char* ssid, char* password)
 {
-	memcpy(current_wifi_credentials.ssid, new_wifi_credential->ssid, MAX_WIFI_SSID_SIZE);
-	memcpy(current_wifi_credentials.password, new_wifi_credential->password, MAX_WIFI_PASSWORD_SIZE);
+	strncpy((char*)&current_wifi_credentials.ssid[0], ssid, MAX_WIFI_SSID_SIZE);
+	strncpy((char*)&current_wifi_credentials.password[0], password, MAX_WIFI_PASSWORD_SIZE);
 }
 
 /* ===== Implementations of private functions ===== */

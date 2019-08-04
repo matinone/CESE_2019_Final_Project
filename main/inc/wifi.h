@@ -75,11 +75,12 @@ wifi_credential_t* get_current_wifi_credentials();
 |  Description: sets the current WiFi credentials.
 |
 |  Parameters:
-|		- wifi_credential_t* : pointer to the new WiFi credentials.
+|		- char* ssid: new WiFi SSID.
+|		- char* password: new WiFi password
 |
 |  Returns: void
 *-------------------------------------------------------------------*/
-void set_current_wifi_credentials(wifi_credential_t* new_wifi_credential);
+void set_current_wifi_credentials(char* ssid, char* password);
 
 
 /* ===== Avoid multiple inclusion ===== */

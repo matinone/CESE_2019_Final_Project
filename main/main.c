@@ -50,12 +50,8 @@ void app_main()
 	return_value = init_nvs_storage(INCLUDE_NVS_STORAGE);
 	ESP_ERROR_CHECK(return_value);
 
-	wifi_credential_t wifi_credential = {
-		.ssid = CONFIG_WIFI_SSID,
-		.password = CONFIG_WIFI_PASSWORD,
-	};
-	set_current_wifi_credentials(&wifi_credential);
-	initialize_wifi(WIFI_FIRST_CONFIG, WIFI_MODE_APSTA, &wifi_credential);
+	set_current_wifi_credentials(CONFIG_WIFI_SSID, CONFIG_WIFI_PASSWORD);
+	initialize_wifi(WIFI_FIRST_CONFIG, WIFI_MODE_APSTA, get_current_wifi_credentials());
 	initialize_uart();
 	initialize_command_processor(wifi_module);
 
