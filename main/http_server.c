@@ -1,5 +1,15 @@
+/* ===== [http_server.c] =====
+ * Copyright Matias Brignone <mnbrignone@gmail.com>
+ * All rights reserved.
+ *
+ * Version: 0.1.0
+ * Creation Date: 2019
+ */
+
+
+/* ===== Dependencies ===== */
 #include "http_server.h"
-#include "http_parser.h"
+#include "custom_http_parser.h"
 #include "nvs_storage.h"
 #include "wifi.h"
 
@@ -16,21 +26,26 @@
 #include "lwip/err.h"
 #include "lwip/netdb.h"
 
+/* ===== Macros of private constants ===== */
+
+/* ===== Declaration of private or external variables ===== */
 // HTTP headers and web pages
 const static char http_html_header[] = "HTTP/1.1 200 OK\nContent-type: text/html\n\n";
 const static char http_png_header[] = "HTTP/1.1 200 OK\nContent-type: image/png\n\n";
 
 // embedded binary data
+extern const uint8_t index_html_start[] asm("_binary_index_html_start");
+extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
 extern const uint8_t wifi_icon_png_start[] asm("_binary_wifi_icon_png_start");
 extern const uint8_t wifi_icon_png_end[]   asm("_binary_wifi_icon_png_end");
 
-extern const uint8_t index_html_start[] asm("_binary_index_html_start");
-extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
 
+/* ===== Prototypes of private functions ===== */
 static void http_server_netconn_serve(struct netconn *conn);
 static char* recover_encoded_spaces(char* encoded_string);
 
-// HTTP server task
+
+/* ===== Implementations of public functions ===== */
 void http_server(void *pvParameters) 
 {
     struct netconn *conn, *newconn;
@@ -55,6 +70,8 @@ void http_server(void *pvParameters)
     netconn_delete(conn);
 }
 
+
+/* ===== Implementations of private functions ===== */
 static void http_server_netconn_serve(struct netconn *conn)
 {
     struct netbuf* inbuf;
@@ -150,6 +167,7 @@ static void http_server_netconn_serve(struct netconn *conn)
     netconn_close(conn);
     netbuf_delete(inbuf);
 }
+
 
 static char* recover_encoded_spaces(char* encoded_string)
 {

@@ -1,18 +1,28 @@
-#include "ble_server.h"
+/* ===== [ble_server.c] =====
+ * Copyright Matias Brignone <mnbrignone@gmail.com>
+ * All rights reserved.
+ *
+ * Version: 0.1.0
+ * Creation Date: 2019
+ */
 
+
+/* ===== Dependencies ===== */
+#include "ble_server.h"
 #include "command_processor.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "freertos/queue.h"
+
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_bt.h"
-
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
 #include "esp_bt_defs.h"
@@ -20,22 +30,28 @@
 #include "esp_bt_main.h"
 #include "esp_gatt_common_api.h"
 
-#define GATTS_TAG "GATTS_TASK"
 
-extern QueueHandle_t queue_command_processor_rx;
-QueueHandle_t queue_ble_server_tx;
-
-///Declare the static function
-static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
-
-#define GATTS_SERVICE_UUID  0x00FF
-#define GATTS_CHAR_UUID     0xFF01
-#define GATTS_NUM_HANDLE    4
-
-#define TEST_DEVICE_NAME    "ESP32_GATTS_SERVER"
-
+/* ===== Macros of private constants ===== */
+#define TEST_DEVICE_NAME            "ESP32_GATTS_SERVER"
+#define GATTS_SERVICE_UUID          0x00FF
+#define GATTS_CHAR_UUID             0xFF01
+#define GATTS_NUM_HANDLE            4
 #define GATTS_DEMO_CHAR_VAL_LEN_MAX 0x40
 #define PREPARE_BUF_MAX_SIZE        1024
+#define GATTS_TAG                   "GATTS_TASK"
+#define adv_config_flag             (1 << 0)
+#define scan_rsp_config_flag        (1 << 1)
+#define PROFILE_NUM                 1
+#define PROFILE_APP_ID              0
+
+/* ===== Prototypes of private functions ===== */
+static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
+static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
+static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
+
+/* ===== Declaration of private or external variables ===== */
+extern QueueHandle_t queue_command_processor_rx;
+QueueHandle_t queue_ble_server_tx;
 
 uint8_t char1_str[] = {0x11,0x22,0x33};
 esp_gatt_char_prop_t a_property = 0;
@@ -48,9 +64,6 @@ esp_attr_value_t gatts_char1_initial_val =
 };
 
 static uint8_t adv_config_done = 0;
-#define adv_config_flag      (1 << 0)
-#define scan_rsp_config_flag (1 << 1)
-
 static uint8_t adv_service_uuid128[32] = {
     /* LSB <--------------------------------------------------------------------------------> MSB */
     //first uuid, 16bit, [12],[13] is the value
@@ -105,9 +118,6 @@ static esp_ble_adv_params_t adv_params = {
     .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
-#define PROFILE_NUM 1
-#define PROFILE_APP_ID 0
-
 // profile defined as a struct whose members depend on the services and characteristics implemented in the Application Profile
 // this one has 1 service and 1 characteristic, and the charasteristic has one descriptor
 struct gatts_profile_inst {
@@ -133,6 +143,94 @@ static struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = {
 };
 
 
+/* ===== Implementations of public functions ===== */
+int8_t start_ble_server()
+{
+    esp_err_t ret;
+    static uint8_t first_time = 0;
+
+    if (first_time == 0)
+    {
+        // release all the memory associated with BT classic
+        ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
+        first_time = 1;
+    }
+
+    // create a queue capable of containing 5 uint8_t values
+    queue_ble_server_tx = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_ble_server_tx == NULL)
+    {
+        printf("Could not create queue_ble_server_tx.\n");
+    }
+
+    // configure and initialize BT controller 
+    // (it implements the Host Controller Interface, the Link and Physical Layers, it sets the BT stack size, and more)
+    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    ret = esp_bt_controller_init(&bt_cfg);
+    if (ret) {
+        ESP_LOGE(GATTS_TAG, "%s initialize controller failed: %s\n", __func__, esp_err_to_name(ret));
+        return -1;
+    }
+
+    ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
+    if (ret) {
+        ESP_LOGE(GATTS_TAG, "%s enable controller failed: %s\n", __func__, esp_err_to_name(ret));
+        return -1;
+    }
+
+    // initialize Bluedroid stack (it includes definitions and APIs for both BLE and BT Classic)
+    ret = esp_bluedroid_init();
+    if (ret) {
+        ESP_LOGE(GATTS_TAG, "%s init bluetooth failed: %s\n", __func__, esp_err_to_name(ret));
+        return -1;
+    }
+    ret = esp_bluedroid_enable();
+    if (ret) {
+        ESP_LOGE(GATTS_TAG, "%s enable bluetooth failed: %s\n", __func__, esp_err_to_name(ret));
+        return -1;
+    }
+
+    // register handler for GATT events
+    ret = esp_ble_gatts_register_callback(gatts_event_handler);
+    if (ret){
+        ESP_LOGE(GATTS_TAG, "gatts register error, error code = %x", ret);
+        return -1;
+    }
+
+    // register handler for GAP events
+    ret = esp_ble_gap_register_callback(gap_event_handler);
+    if (ret){
+        ESP_LOGE(GATTS_TAG, "gap register error, error code = %x", ret);
+        return -1;
+    }
+
+    // register application profile (there can be more than one in the same server)
+    ret = esp_ble_gatts_app_register(PROFILE_APP_ID);
+    if (ret){
+        ESP_LOGE(GATTS_TAG, "gatts app register error, error code = %x", ret);
+        return -1;
+    }
+
+    esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
+    if (local_mtu_ret){
+        ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
+    }
+
+    return 0;
+}
+
+int8_t stop_ble_server()
+{
+    esp_bluedroid_disable();
+    esp_bluedroid_deinit();
+    esp_bt_controller_disable();
+    esp_bt_controller_deinit(); 
+
+    return 0;
+}
+
+
+/* ===== Implementations of private functions ===== */
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event) {
@@ -405,87 +503,3 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     } while (0);
 }
 
-int8_t start_ble_server()
-{
-    esp_err_t ret;
-    static uint8_t first_time = 0;
-
-    if (first_time == 0)
-    {
-        // release all the memory associated with BT classic
-        ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
-        first_time = 1;
-    }
-
-    // create a queue capable of containing 5 uint8_t values
-    queue_ble_server_tx = xQueueCreate(5, sizeof(uint8_t));
-    if (queue_ble_server_tx == NULL)
-    {
-        printf("Could not create queue_ble_server_tx.\n");
-    }
-
-    // configure and initialize BT controller 
-    // (it implements the Host Controller Interface, the Link and Physical Layers, it sets the BT stack size, and more)
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    ret = esp_bt_controller_init(&bt_cfg);
-    if (ret) {
-        ESP_LOGE(GATTS_TAG, "%s initialize controller failed: %s\n", __func__, esp_err_to_name(ret));
-        return -1;
-    }
-
-    ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
-    if (ret) {
-        ESP_LOGE(GATTS_TAG, "%s enable controller failed: %s\n", __func__, esp_err_to_name(ret));
-        return -1;
-    }
-
-    // initialize Bluedroid stack (it includes definitions and APIs for both BLE and BT Classic)
-    ret = esp_bluedroid_init();
-    if (ret) {
-        ESP_LOGE(GATTS_TAG, "%s init bluetooth failed: %s\n", __func__, esp_err_to_name(ret));
-        return -1;
-    }
-    ret = esp_bluedroid_enable();
-    if (ret) {
-        ESP_LOGE(GATTS_TAG, "%s enable bluetooth failed: %s\n", __func__, esp_err_to_name(ret));
-        return -1;
-    }
-
-    // register handler for GATT events
-    ret = esp_ble_gatts_register_callback(gatts_event_handler);
-    if (ret){
-        ESP_LOGE(GATTS_TAG, "gatts register error, error code = %x", ret);
-        return -1;
-    }
-
-    // register handler for GAP events
-    ret = esp_ble_gap_register_callback(gap_event_handler);
-    if (ret){
-        ESP_LOGE(GATTS_TAG, "gap register error, error code = %x", ret);
-        return -1;
-    }
-
-    // register application profile (there can be more than one in the same server)
-    ret = esp_ble_gatts_app_register(PROFILE_APP_ID);
-    if (ret){
-        ESP_LOGE(GATTS_TAG, "gatts app register error, error code = %x", ret);
-        return -1;
-    }
-
-    esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
-    if (local_mtu_ret){
-        ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
-    }
-
-    return 0;
-}
-
-int8_t stop_ble_server()
-{
-    esp_bluedroid_disable();
-    esp_bluedroid_deinit();
-    esp_bt_controller_disable();
-    esp_bt_controller_deinit(); 
-
-    return 0;
-}

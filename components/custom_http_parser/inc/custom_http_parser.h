@@ -15,11 +15,11 @@ struct http_header_t{
 typedef struct http_header_t http_header_t;
 
 typedef struct {
-    http_method_t   method;
-    char*           resource;
-    char*           version;
-    http_header_t*  headers;
-    char*           body;
+    http_method_t    method;
+    char*                   resource;
+    char*                   version;
+    http_header_t*   headers;
+    char*                   body;
 } http_request_t;
 
 

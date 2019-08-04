@@ -6,6 +6,7 @@
  * Creation Date: 2019
  */
 
+
 /* ===== Avoid multiple inclusion ===== */
 #ifndef __WIFI_H__
 #define __WIFI_H__
@@ -21,6 +22,16 @@
 #define MAX_WIFI_PASSWORD_SIZE 	64
 
 /* ===== Public structs and enums ===== */
+/*------------------------------------------------------------------
+|  Struct: wifi_credential_t
+| ------------------------------------------------------------------
+|  Description: stores the SSID and password associated to a WiFi
+|				network.
+|
+|  Members:
+|		ssid 		- SSID of the WiFi network
+|		password 	- password of the wifi network
+*-------------------------------------------------------------------*/
 typedef struct {
 	uint8_t ssid[32];
 	uint8_t password[64];
@@ -28,7 +39,6 @@ typedef struct {
 
 
 /* ===== Prototypes of public functions ===== */
-
 /*------------------------------------------------------------------
 |  Function: initialize_wifi
 | ------------------------------------------------------------------
