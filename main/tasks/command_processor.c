@@ -12,11 +12,14 @@
 #include "wifi.h"
 #include "ble_server.h"
 #include "mqtt.h"
+#include "nvs_storage.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+
 #include "esp_log.h"
+
 #include <string.h>
 
 
@@ -74,6 +77,17 @@ void command_processor_task(void *pvParameter)
             // do something here depending on the received command
             switch(current_command.command)
             {
+                case CMD_STATUS: ;
+                    char* nvs_ssid_value = get_nvs_string_value(WIFI_SSID_NVS_KEY);
+                    char* nvs_password_value = get_nvs_string_value(WIFI_PASSWORD_NVS_KEY);
+
+                    printf("SSID = %s, PASSWORD = %s.\n", nvs_ssid_value, nvs_password_value);
+                    // release memory allocated in get methods
+                    free(nvs_ssid_value);
+                    free(nvs_password_value);
+
+                    break;
+
                 case CMD_WIFI:
                     switch(wireless_state)
                     {
@@ -89,7 +103,7 @@ void command_processor_task(void *pvParameter)
                         case BLE_MODE:
                             printf("Stopping BLE server and starting WiFi.\n");
                             stop_ble_server();
-                            initialize_wifi(0);
+                            initialize_wifi(0, WIFI_MODE_APSTA, get_current_wifi_credentials());
                             if (wifi_module == MQTT_RX)
                             {
                                 start_custom_mqtt_client();
@@ -98,7 +112,7 @@ void command_processor_task(void *pvParameter)
                             break;
                         case OFFLINE_MODE:
                             printf("Starting WiFi.\n");
-                            initialize_wifi(0);
+                            initialize_wifi(0, WIFI_MODE_APSTA, get_current_wifi_credentials());
                             if (wifi_module == MQTT_RX)
                             {
                                 start_custom_mqtt_client();
