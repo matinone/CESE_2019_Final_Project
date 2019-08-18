@@ -39,6 +39,9 @@ static char http_unsopported_request[] = "PUT /index.html HTTP/1.1\r\n"
 "Host: 192.168.1.1\r\n"
 "\r\n";
 
+static char http_empty_header_request[] = "GET /index.html HTTP/1.1\r\n"
+"\r\n";
+
 static http_request_t* get_request;
 
 /* ===== Implementations of public functions ===== */
@@ -131,6 +134,12 @@ void test_parse_correct_headers(void)   {
 
     current_header = current_header->next;
     TEST_ASSERT_NULL(NULL);
+}
+
+void test_empty_headers(void)   {
+    http_request_t* empty_header_request = parse_http_request(http_empty_header_request, strlen(http_empty_header_request));
+    TEST_ASSERT_NULL(empty_header_request->headers);
+    free_request(empty_header_request);
 }
 
 void test_empty_body_get_request(void)  {
