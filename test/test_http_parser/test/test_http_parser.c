@@ -133,7 +133,7 @@ void test_parse_correct_headers(void)   {
     TEST_ASSERT_EQUAL_STRING("192.168.1.1", current_header->value);
 
     current_header = current_header->next;
-    TEST_ASSERT_NULL(NULL);
+    TEST_ASSERT_NULL(current_header);
 }
 
 void test_empty_headers(void)   {
