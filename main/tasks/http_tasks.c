@@ -26,8 +26,8 @@
 
 
 /* ===== Macros of private constants ===== */
-#define COMMAND_RX_CHECK_PERIOD 15000
-#define RX_BUFFER_SIZE 128
+#define COMMAND_RX_CHECK_PERIOD	15000
+#define RX_BUFFER_SIZE 			128
 
 /* ===== Declaration of private or external variables ===== */
 extern EventGroupHandle_t wifi_event_group;
@@ -49,15 +49,13 @@ void wifi_tx_task(void *pvParameter)
 {
 	// create a queue capable of containing 5 uint8_t values
     queue_http_tx = xQueueCreate(5, sizeof(uint8_t));
-    if (queue_http_tx == NULL)
-    {
+    if (queue_http_tx == NULL)	{
         printf("Could not create queue_http_tx.\n");
     }
 
 	// create a queue capable of containing a single pointer to struct addrinfo
 	queue_wifi_tx_to_rx = xQueueCreate(1, sizeof(struct addrinfo *));
-	if (queue_wifi_tx_to_rx == NULL)
-	{
+	if (queue_wifi_tx_to_rx == NULL)	{
 		printf("Could not create wifi_tx_to_rx QUEUE.\n");
 	}
 
@@ -85,8 +83,8 @@ void wifi_tx_task(void *pvParameter)
 	char content_buf[RX_BUFFER_SIZE];
 	
 	// resolve the IP of the target website
-	int result = getaddrinfo(CONFIG_HTTP_WEBSITE, "80", &hints, &res);
-	if((result != 0) || (res == NULL)) {
+	int32_t result = getaddrinfo(CONFIG_HTTP_WEBSITE, "80", &hints, &res);
+	if((result != 0) || (res == NULL))	{
 		printf("Unable to resolve IP for target website %s\n", CONFIG_HTTP_WEBSITE);
 		while(1) vTaskDelay(1000 / portTICK_RATE_MS);
 	}
@@ -94,46 +92,41 @@ void wifi_tx_task(void *pvParameter)
 
 	BaseType_t xStatus;
 	xStatus = xQueueSendToBack(queue_wifi_tx_to_rx, &res, 0);
-	if (xStatus != pdPASS)
-	{
+	if (xStatus != pdPASS)	{
 		printf("Could not send the IP address resolve information to the queue.\n");
 	}
 
 	uint8_t queue_rcv_value;
 	char request_buffer[strlen(HTTP_REQUEST_WRITE)];
-	int s, request_status;
+	int32_t socket_http, request_status;
 
-	while (1)
-	{
+	while (1)	{
 		// always wait for connection
 		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 		
 		// Read data from the queue
 		xStatus = xQueueReceive(queue_http_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
-		if (xStatus == pdPASS)
-		{
+		if (xStatus == pdPASS)	{
 			ESP_LOGI(TAG, "Received from Command Processor TASK: %d\n", queue_rcv_value);
 			sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
 			
 			// create a new socket
-			s = lwip_socket(res->ai_family, res->ai_socktype, 0);
-			request_status = send_http_request(s, res, request_buffer);
-			if (request_status < 0)
-			{
+			socket_http = lwip_socket(res->ai_family, res->ai_socktype, 0);
+			request_status = send_http_request(socket_http, res, request_buffer);
+			if (request_status < 0)	{
 				continue;
 			}
 			
 			printf("Receiving HTTP response.\n");
-			int flag_rsp_ok = 0;
+			int32_t flag_rsp_ok = 0;
 			content_buf[0] = '\0';
 			
-			flag_rsp_ok = receive_http_response(s, recv_buf, content_buf, RX_BUFFER_SIZE);
+			flag_rsp_ok = receive_http_response(socket_http, recv_buf, content_buf, RX_BUFFER_SIZE);
 
 			// close socket after receiving the response
-			lwip_close_r(s);
+			lwip_close_r(socket_http);
 
-			if (flag_rsp_ok == 1)
-			{
+			if (flag_rsp_ok == 1)	{
 				printf("HTTP response status OK.\n");
 				printf("Response Content: %s\n", content_buf);
 
@@ -144,14 +137,12 @@ void wifi_tx_task(void *pvParameter)
 				//  	pch = strtok (NULL, "\n,");
 				// }
 			}
-			else 
-			{
+			else	{
 				printf("HTTP response status NOT OK.\n");
 			}
 
 		}   // xStatus == pdPASS
-		else 
-		{
+		else	{
 			// printf("Nothing received from ECHO Task.\n");
 		}
 
@@ -171,72 +162,63 @@ void wifi_rx_cmd_task(void * pvParameter)
 	char recv_buf[RX_BUFFER_SIZE];
 	char content_buf[RX_BUFFER_SIZE];
 	char * pch;
-	int s, request_status;
+	int32_t socket_http, request_status;
 	// command to send to the command processor
 	rx_command_t http_command;
     http_command.rx_id = HTTP_RX;
 
-	if (xQueueReceive(queue_wifi_tx_to_rx, &res, portMAX_DELAY) != pdTRUE)
-	{
+	if (xQueueReceive(queue_wifi_tx_to_rx, &res, portMAX_DELAY) != pdTRUE)	{
 		printf("Error receiving target website IP resolution\n");
 	}
 
 	// wait some initial time
 	vTaskDelay(5000 / portTICK_RATE_MS);
 
-	while (1)
-	{
+	while (1)	{
 		// always wait for connection
 		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 
 		printf("\nChecking if there is any new command to execute.\n");
 
 		// create a new socket
-		s = lwip_socket(res->ai_family, res->ai_socktype, 0);
-		request_status = send_http_request(s, res, HTTP_REQUEST_READ_CMD);
-		if (request_status < 0)
-		{
+		socket_http = lwip_socket(res->ai_family, res->ai_socktype, 0);
+		request_status = send_http_request(socket_http, res, HTTP_REQUEST_READ_CMD);
+		if (request_status < 0)	{
 			vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS);
 			continue;
 		}
 		
 		printf("Receiving HTTP response.\n");
-		int flag_rsp_ok;
+		int32_t flag_rsp_ok;
 		content_buf[0] = '\0';
-		flag_rsp_ok = receive_http_response(s, recv_buf, content_buf, RX_BUFFER_SIZE);
+		flag_rsp_ok = receive_http_response(socket_http, recv_buf, content_buf, RX_BUFFER_SIZE);
 
 		// close socket after receiving the response
-		lwip_close_r(s);
+		lwip_close_r(socket_http);
 
-		if (flag_rsp_ok == 1)
-		{
+		if (flag_rsp_ok == 1)	{
 			printf("HTTP response status OK.\n");
 			// printf("Response Content: %s\n", content_buf);
 
 			pch = strstr(content_buf, "CMD_");
-			if (pch != NULL)
-			{
+			if (pch != NULL)	{
 				printf("Received new command: %s\n", content_buf);
 				
 				http_command.command = str_to_cmd(content_buf);
 				xStatus = xQueueSendToBack(queue_command_processor_rx, &http_command, 1000 / portTICK_RATE_MS);
-	            if (xStatus != pdPASS)
-	            {
+	            if (xStatus != pdPASS)	{
 	                printf("Could not send the data to the queue.\n");
 	            }
 			}
-			else
-			{
+			else	{
 				printf("No new commands.\n");
 			}
 		}
-		else 
-		{
+		else	{
 			printf("HTTP response status NOT OK.\n");
 		}
 		vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS);
 	}
 }
-
 
 /* ===== Implementations of private functions ===== */

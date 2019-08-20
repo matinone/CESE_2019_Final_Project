@@ -16,9 +16,9 @@
 #include "command_processor.h"
 
 /* ===== Macros of private constants ===== */
-#define UART_RX_CHECK_TIME_MS 100
-#define UART_TX_PIN 1
-#define UART_RX_PIN 3
+#define UART_RX_CHECK_TIME_MS   100
+#define UART_TX_PIN             1
+#define UART_RX_PIN             3
 
 /* ===== Declaration of private or external variables ===== */
 extern QueueHandle_t queue_command_processor_rx;
@@ -55,7 +55,7 @@ void initialize_uart()
 void echo_task(void *pvParameter)
 {   
     uint8_t* uart_rcv_buffer = (uint8_t*) malloc(1);
-    int rcv_len;
+    int32_t rcv_len;
     uint8_t command_type;
     rx_command_t uart_command;
     uart_command.rx_id = UART_RX;

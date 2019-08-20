@@ -23,22 +23,22 @@
 
 /* ===== Macros of private constants ===== */
 #ifdef CONFIG_THINGSPEAK
-	#define CONFIG_BROKER_URI "mqtts://mqtt.thingspeak.com:8883"
-	#define MQTT_PUBLISH_TOPIC "channels/776064/publish/fields/field1/2WBYREDTIXQ6X9PF"
-	#define MQTT_SUBSCRIBE_TOPIC "channels/776064/subscribe/fields/field2/E5V8ERAC6B0Y8160"
-	#define MQTT_USERNAME "mbrignone"
-	#define MQTT_PASSWORD "FP650XEYQ5XX0NY7"
-	#define BINARY_CERTIFICATE_START "_binary_thingspeak_mqtts_certificate_pem_start"
-	#define BINARY_CERTIFICATE_END "_binary_thingspeak_mqtts_certificate_pem_end"
+	#define CONFIG_BROKER_URI 				"mqtts://mqtt.thingspeak.com:8883"
+	#define MQTT_PUBLISH_TOPIC 				"channels/776064/publish/fields/field1/2WBYREDTIXQ6X9PF"
+	#define MQTT_SUBSCRIBE_TOPIC 			"channels/776064/subscribe/fields/field2/E5V8ERAC6B0Y8160"
+	#define MQTT_USERNAME 					"mbrignone"
+	#define MQTT_PASSWORD 					"FP650XEYQ5XX0NY7"
+	#define BINARY_CERTIFICATE_START 		"_binary_thingspeak_mqtts_certificate_pem_start"
+	#define BINARY_CERTIFICATE_END 			"_binary_thingspeak_mqtts_certificate_pem_end"
 #else
 	#ifdef CONFIG_ADAFRUIT
-		#define CONFIG_BROKER_URI "mqtts://io.adafruit.com:8883"
-		#define MQTT_PUBLISH_TOPIC "mbrignone/feeds/test-example"
-		#define MQTT_SUBSCRIBE_TOPIC "mbrignone/feeds/test-example"
-		#define MQTT_USERNAME "mbrignone"
-		#define MQTT_PASSWORD "01d6fd13e8af4ed3b30f580e945f5561"
-		#define BINARY_CERTIFICATE_START "_binary_adafruit_mqtts_certificate_pem_start"
-		#define BINARY_CERTIFICATE_END "_binary_adafruit_mqtts_certificate_pem_end"
+		#define CONFIG_BROKER_URI 			"mqtts://io.adafruit.com:8883"
+		#define MQTT_PUBLISH_TOPIC 			"mbrignone/feeds/test-example"
+		#define MQTT_SUBSCRIBE_TOPIC 		"mbrignone/feeds/test-example"
+		#define MQTT_USERNAME 				"mbrignone"
+		#define MQTT_PASSWORD 				"01d6fd13e8af4ed3b30f580e945f5561"
+		#define BINARY_CERTIFICATE_START 	"_binary_adafruit_mqtts_certificate_pem_start"
+		#define BINARY_CERTIFICATE_END 		"_binary_adafruit_mqtts_certificate_pem_end"
 	#endif
 #endif
 
@@ -71,8 +71,7 @@ void mqtt_publish_task(void *pvParameter)
 {
 	// create a queue capable of containing 5 uint8_t values
     queue_mqtt_tx = xQueueCreate(5, sizeof(uint8_t));
-    if (queue_mqtt_tx == NULL)
-    {
+    if (queue_mqtt_tx == NULL)	{
         printf("Could not create queue_mqtt_tx.\n");
     }
 
@@ -101,26 +100,22 @@ void mqtt_publish_task(void *pvParameter)
 
 	// xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
 
-	while(1)
-	{
+	while(1)	{
 		// always wait for this
 		xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
 
 		// read data from the queue
 		xStatus = xQueueReceive(queue_mqtt_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
-		if (xStatus == pdPASS)
-		{
+		if (xStatus == pdPASS)	{
 			ESP_LOGI(TAG, "Received from Command Processor TASK: %d\n", queue_rcv_value);
 			sprintf(str_number, "%d", queue_rcv_value);
 			// ThingSpeak free cloud requires some time between transactions (15 seconds)
 			vTaskDelay(15000 / portTICK_RATE_MS);
 			msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic, str_number, 0, 0, 0);
-			if (msg_id != -1)
-			{
+			if (msg_id != -1)	{
 				ESP_LOGI(TAG, "Sent publish successful.\n");
 			}
-			else
-			{
+			else	{
 				printf("Error publishing.\n");
 			}
 		}
@@ -139,23 +134,20 @@ void mqtt_rx_task(void *pvParameter)
 	xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
 	printf("MQTT Connected (MQTT RX task).\n");
 
-	while(1)
-	{
+	while(1)	{
 		// always wait for this
 		xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
 
 		// read data from the queue (passed from the event handler)
 		xStatus = xQueueReceive(queue_mqtt_subs_to_rx_task, &(mqtt_data_received),  50 / portTICK_RATE_MS);
-		if (xStatus == pdPASS)
-		{
+		if (xStatus == pdPASS)	{
 			printf("MQTT RX received data.\n");
 			printf("TOPIC = %.*s\r\n", mqtt_data_received.topic_len, mqtt_data_received.topic);
 			printf("DATA = %.*s\r\n", mqtt_data_received.data_len, mqtt_data_received.data);
 
 			mqtt_command.command = atoi(mqtt_data_received.data);
 			xStatus = xQueueSendToBack(queue_command_processor_rx, &mqtt_command, 1000 / portTICK_RATE_MS);
-            if (xStatus != pdPASS)
-            {
+            if (xStatus != pdPASS)	{
                 printf("Could not send the data to the queue.\n");
             }
 		}
@@ -186,7 +178,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 	BaseType_t xStatus;
 	mqtt_sub_data_received_t mqtt_data_received;
 
-	switch (event->event_id) {
+	switch (event->event_id)	{
 		case MQTT_EVENT_CONNECTED:
 			printf("MQTT_EVENT_CONNECTED\n");
 			xEventGroupSetBits(wifi_event_group, MQTT_CONNECTED_BIT);
