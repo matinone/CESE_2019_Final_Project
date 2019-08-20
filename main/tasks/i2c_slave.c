@@ -14,13 +14,13 @@
 #include "esp_log.h"
 
 /* ===== Macros of private constants ===== */
-#define I2C_SLAVE_NUM I2C_NUM_0             
-#define I2C_SLAVE_TX_BUF_LEN 1024           
-#define I2C_SLAVE_RX_BUF_LEN 1024           
+#define I2C_SLAVE_NUM           I2C_NUM_0
+#define I2C_SLAVE_TX_BUF_LEN    1024
+#define I2C_SLAVE_RX_BUF_LEN    1024
 
-#define COMMAND_START   's'
-#define COMMAND_END     'e'
-#define COMMAND_LENGTH  3
+#define COMMAND_START           's'
+#define COMMAND_END             'e'
+#define COMMAND_LENGTH          3
 
 /* ===== Declaration of private or external variables ===== */
 QueueHandle_t queue_i2c_slave_tx;
