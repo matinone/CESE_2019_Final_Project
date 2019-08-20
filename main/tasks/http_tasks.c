@@ -86,7 +86,7 @@ void wifi_tx_task(void *pvParameter)
 	int32_t result = getaddrinfo(CONFIG_HTTP_WEBSITE, "80", &hints, &res);
 	if((result != 0) || (res == NULL))	{
 		printf("Unable to resolve IP for target website %s\n", CONFIG_HTTP_WEBSITE);
-		while(1) vTaskDelay(1000 / portTICK_RATE_MS);
+		abort();
 	}
 	printf("Target website's IP resolved for %s\n", CONFIG_HTTP_WEBSITE);
 
