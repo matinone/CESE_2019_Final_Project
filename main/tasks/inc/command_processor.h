@@ -67,6 +67,8 @@ typedef enum {
     CMD_BLE,
     CMD_ECHO,
     CMD_INVALID,
+    CMD_OK,
+    CMD_FAIL,
 }   command_type_t;
 
 /*------------------------------------------------------------------

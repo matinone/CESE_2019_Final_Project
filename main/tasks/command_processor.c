@@ -13,6 +13,8 @@
 #include "ble_server.h"
 #include "mqtt.h"
 #include "nvs_storage.h"
+#include "i2c_master.h"
+#include "i2c_slave.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -25,6 +27,7 @@
 
 /* ===== Macros of private constants ===== */
 #define CMD_RX_CHECK_TIME_MS 500
+#define I2C_DATA_LENGTH 3
 
 /* ===== Declaration of private or external variables ===== */
 QueueHandle_t queue_command_processor_rx;
@@ -64,6 +67,8 @@ void command_processor_task(void *pvParameter)
     rx_command_t current_command;
     BaseType_t xStatus;
     QueueHandle_t* generic_queue_handle_ptr;
+    uint8_t i2c_command_frame[I2C_DATA_LENGTH] = {'s', 0, 'e'};
+    esp_err_t i2c_ret_value;
 
     while (1)
     {
@@ -170,6 +175,37 @@ void command_processor_task(void *pvParameter)
                         printf("There is no queue handle match for module %s.\n", translate_rx_module(current_command.rx_id));
                     }
                     break;
+                case CMD_START:
+                    // write to the I2C slave
+                    i2c_command_frame[1] = CMD_START;
+                    i2c_ret_value = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, i2c_command_frame, I2C_DATA_LENGTH);
+                    if(i2c_ret_value == ESP_ERR_TIMEOUT)    {
+                        printf("Master to slave I2C write timeout.\n");
+                    }
+                    else if(i2c_ret_value == ESP_OK)    {
+                        printf("CMD_START sent to the slave.\n");
+                    }
+                    else    {
+                        printf("Master to slave I2C write error: %s.\n", esp_err_to_name(i2c_ret_value));
+                    }
+
+                    break;
+                case CMD_STOP:
+                    // write to the I2C slave
+                    i2c_command_frame[1] = CMD_STOP;
+                    i2c_ret_value = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, i2c_command_frame, I2C_DATA_LENGTH);
+                    if(i2c_ret_value == ESP_ERR_TIMEOUT)    {
+                        printf("Master to slave I2C write timeout.\n");
+                    }
+                    else if(i2c_ret_value == ESP_OK)    {
+                        printf("CMD_STOP sent to the slave.\n");
+                    }
+                    else    {
+                        printf("Master to slave I2C write error: %s.\n", esp_err_to_name(i2c_ret_value));
+                    }
+
+                    break;
+
                 default:
                     break;
             }

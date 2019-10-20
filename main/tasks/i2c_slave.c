@@ -58,28 +58,24 @@ esp_err_t initialize_i2c_slave(uint16_t slave_addr)
 
 void i2c_slave_task(void *pvParameter)
 {
-    uint8_t queue_rcv_value;
-    uint8_t command_frame[COMMAND_LENGTH] = {COMMAND_START, 0, COMMAND_END};
+    uint8_t command_frame[COMMAND_LENGTH];
     size_t d_size;
-    BaseType_t xStatus;
+    int32_t slave_read_buffer_size;
 
     while (1)
     {
-        // read data from the queue
-        xStatus = xQueueReceive( queue_i2c_slave_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
-        if (xStatus == pdPASS)
-        {   
-            command_frame[1] = queue_rcv_value;
-            ESP_LOGI(TAG, "I2C TASK received from UART TASK: %c\n", command_frame[1]);
-
+        // read data from slave buffer
+        slave_read_buffer_size = i2c_slave_read_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 1000 / portTICK_RATE_MS);
+        if (slave_read_buffer_size > 0 && command_frame[0] == 's' && command_frame[2] == 'e')
+        {
+            ESP_LOGI(TAG, "I2C Slave Task read from slave buffer: %d\n", command_frame[1]);
+            // send the same command to the master
             d_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
-            if (d_size == 0)
-            {
+            if (d_size == 0)    {
                 printf("I2C slave buffer is full, UNABLE to write\n");
             }
-            else
-            {
-                ESP_LOGI(TAG, "%c successfully written to I2C slave buffer\n", command_frame[1]);
+            else    {
+                printf("%d successfully written to I2C slave buffer\n", command_frame[1]);
             }
         }
 

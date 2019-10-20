@@ -17,7 +17,6 @@
 /* ===== Macros of private constants ===== */
 #define DATA_LENGTH                 3           // data buffer length
 
-#define I2C_MASTER_NUM              I2C_NUM_1
 #define I2C_MASTER_FREQ_HZ          100000      //I2C master clock frequency */
 #define I2C_MASTER_TX_BUF_DISABLE   0           // master does not need buffer
 #define I2C_MASTER_RX_BUF_DISABLE   0           // master does not need buffer
@@ -36,8 +35,7 @@ QueueHandle_t queue_i2c_to_wifi;
 static const char* TAG = "I2C_MASTER_TASK";
 
 /* ===== Prototypes of private functions ===== */
-static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_rd, size_t size);
-static esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_wr, size_t size);
+
 
 /* ===== Implementations of public functions ===== */
 esp_err_t initialize_i2c_master()
@@ -85,7 +83,7 @@ void i2c_master_task(void *pvParameter)
         {   
             if (*(data_rd) == COMMAND_START && *(data_rd + 2) == COMMAND_END)
             {
-                ESP_LOGI(TAG, "I2C Master Task read from slave the value: %c\n", *(data_rd + 1));
+                ESP_LOGI(TAG, "I2C Master Task read from slave the value: %d\n", *(data_rd + 1));
                 xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_rd + 1, 0);
                 if (xStatus != pdPASS)
                 {
@@ -102,9 +100,7 @@ void i2c_master_task(void *pvParameter)
     }
 }
 
-
-/* ===== Implementations of private functions ===== */
-static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_rd, size_t size)
+esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_rd, size_t size)
 {
     if (size == 0) {
         return ESP_OK;
@@ -122,7 +118,7 @@ static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint16_t slave_addres
     return ret;
 }
 
-static esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_wr, size_t size)
+esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_wr, size_t size)
 {
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
@@ -133,3 +129,6 @@ static esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint16_t slave_addre
     i2c_cmd_link_delete(cmd);
     return ret;
 }
+
+
+/* ===== Implementations of private functions ===== */

@@ -14,8 +14,9 @@
 #include "driver/i2c.h"
 
 /* ===== Macros of public constants ===== */
-#define I2C_MASTER_SCL_IO 19	// gpio for I2C slave clock (SCL)
-#define I2C_MASTER_SDA_IO 18	// gpio for I2c slave data (SDA)
+#define I2C_MASTER_SCL_IO   19	        // gpio for I2C master clock (SCL)
+#define I2C_MASTER_SDA_IO   18	        // gpio for I2c master data (SDA)
+#define I2C_MASTER_NUM      I2C_NUM_1   // I2C assigned to the master
 
 /* ===== Public structs and enums ===== */
 
@@ -49,6 +50,32 @@ esp_err_t initialize_i2c_master();
 |  Returns:  void
 *-------------------------------------------------------------------*/
 void i2c_master_task(void *pvParameter);
+
+
+/*------------------------------------------------------------------
+|  Function: i2c_master_read_slave
+| ------------------------------------------------------------------
+|  Description:
+|
+|  Parameters:
+|		-
+|
+|  Returns:  void
+*-------------------------------------------------------------------*/
+esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_rd, size_t size);
+
+
+/*------------------------------------------------------------------
+|  Function: i2c_master_write_slave
+| ------------------------------------------------------------------
+|  Description:
+|
+|  Parameters:
+|		-
+|
+|  Returns:  void
+*-------------------------------------------------------------------*/
+esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint16_t slave_address, uint8_t *data_wr, size_t size);
 
 /* ===== Avoid multiple inclusion ===== */
 #endif // __I2C_MASTER_H__
