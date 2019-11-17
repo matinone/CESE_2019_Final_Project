@@ -20,7 +20,8 @@
 /*------------------------------------------------------------------
 |  Struct: mbedtls_connection_handler_t
 | ------------------------------------------------------------------
-|  Description: 
+|  Description: contains all the information necessary for the TLS
+|				connection.
 |
 |  Members:
 |		entropy 	- 
@@ -46,10 +47,16 @@ typedef struct {
 /*------------------------------------------------------------------
 |  Function: configure_tls
 | ------------------------------------------------------------------
-|  Description: 
+|  Description: configures all the parameters of the TLS connection.
 |
 |  Parameters:
-|		- 
+|		- mbedtls_handler: handler with all the information of the
+|		TLS connection.
+|		- server: hostname for the TLS session.
+|		- cert_start: pointer to the CA certificate initial memory
+|		address
+|		- cert_end: pointer to the CA certificate last memory
+|		address
 |
 |  Returns: int
 |			0: OK
@@ -60,10 +67,15 @@ int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, char* server, c
 /*------------------------------------------------------------------
 |  Function: tls_send_http_request
 | ------------------------------------------------------------------
-|  Description: 
+|  Description: connects to the server, performs the SSL/TLS
+|				handshake, and sends the HTTP request.
 |
 |  Parameters:
-|		- 
+|		- mbedtls_handler: handler with all the information of the
+|		TLS connection.
+|		- server: server to connect to.
+|		- port: port to connect to.
+|		- http_request: HTTP request to send using the TLS session.
 |
 |  Returns: int
 |			0: OK
@@ -74,10 +86,16 @@ int tls_send_http_request(mbedtls_connection_handler_t* mbedtls_handler, const c
 /*------------------------------------------------------------------
 |  Function: tls_receive_http_response
 | ------------------------------------------------------------------
-|  Description: 
+|  Description: gets the HTTP response after sending a HTTP request,
+|				through TLS.
 |
 |  Parameters:
-|		- 
+|		- mbedtls_handler: handler with all the information of the
+|		TLS connection.
+|		- recv_buf: buffer to receive the whole HTTP response.
+|       - content_buf: buffer for the content section of the 
+|       response.
+|       - buf_size: size of the recv_buf.
 |
 |  Returns: int
 |			0: OK
@@ -88,10 +106,12 @@ int tls_receive_http_response(mbedtls_connection_handler_t* mbedtls_handler, cha
 /*------------------------------------------------------------------
 |  Function: tls_clean_up
 | ------------------------------------------------------------------
-|  Description: 
+|  Description: closes the TLS session and frees up the memory.
 |
 |  Parameters:
-|		- 
+|		- mbedtls_handler: handler with all the information of the
+|		TLS connection.
+|		- error: contains the error code (in case of error)
 |
 |  Returns: void
 *-------------------------------------------------------------------*/

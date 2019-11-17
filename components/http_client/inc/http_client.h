@@ -22,13 +22,17 @@
 /*------------------------------------------------------------------
 |  Function: send_http_request
 | ------------------------------------------------------------------
-|  Description: 
+|  Description: sends a HTTP request to a server.
 |
 |  Parameters:
-|		- 
+|		- socket_handler: handler of the socket used to send the
+|       request.
+|       - res: target server for the HTTP request.
+|       - http_request: the specific request to send.
 |
 |  Returns: int
 |			0: OK
+|          -1: ERROR, unable to send the HTTP request
 *-------------------------------------------------------------------*/
 int send_http_request(int socket_handler, struct addrinfo* res, char* http_request);
 
@@ -36,13 +40,19 @@ int send_http_request(int socket_handler, struct addrinfo* res, char* http_reque
 /*------------------------------------------------------------------
 |  Function: receive_http_response
 | ------------------------------------------------------------------
-|  Description: 
+|  Description: gets the HTTP response after sending a HTTP request
 |
 |  Parameters:
-|		- 
+|		- socket_handler: handler of the socket used to receive the
+|       response.
+|       - recv_buf: buffer to receive the whole HTTP response.
+|       - content_buf: buffer for the content section of the 
+|       response.
+|       - buf_size: size of the recv_buf.
 |
 |  Returns: int
-|			0: OK
+|			0           : OK
+|           Other value : ERROR
 *-------------------------------------------------------------------*/
 int receive_http_response(int socket_handler, char* recv_buf, char* content_buf, int buf_size);
 
