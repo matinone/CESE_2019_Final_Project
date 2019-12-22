@@ -9,7 +9,7 @@
 
 /* ===== Dependencies ===== */
 #include "i2c_master.h"
-#include "i2c_slave.h"
+#include "serial_protocol_common.h"
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
@@ -25,10 +25,6 @@
 #define ACK_CHECK_DIS               0x0         // I2C master will not check ack from slave
 #define ACK_VAL                     0x0         // I2C ack value
 #define NACK_VAL                    0x1         // I2C nack value
-
-#define COMMAND_START               's'
-#define COMMAND_END                 'e'
-#define COMMAND_LENGTH              3
 
 /* ===== Declaration of private or external variables ===== */
 // QueueHandle_t queue_i2c_to_wifi;

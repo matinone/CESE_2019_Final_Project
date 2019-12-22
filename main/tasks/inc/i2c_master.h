@@ -14,8 +14,6 @@
 #include "driver/i2c.h"
 
 /* ===== Macros of public constants ===== */
-#define I2C_MASTER_SCL_IO   19	        // gpio for I2C master clock (SCL)
-#define I2C_MASTER_SDA_IO   18	        // gpio for I2c master data (SDA)
 #define I2C_MASTER_NUM      I2C_NUM_1   // I2C assigned to the master
 
 /* ===== Public structs and enums ===== */

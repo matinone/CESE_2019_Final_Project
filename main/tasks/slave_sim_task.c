@@ -8,7 +8,8 @@
 
 
 /* ===== Dependencies ===== */
-#include "inc/slave_sim_task.h"
+#include "slave_sim_task.h"
+#include "serial_protocol_common.h"
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
@@ -18,16 +19,11 @@
 #define I2C_SLAVE_TX_BUF_LEN    1024
 #define I2C_SLAVE_RX_BUF_LEN    1024
 
-#define COMMAND_START           's'
-#define COMMAND_END             'e'
-#define COMMAND_LENGTH          3
-
 /* ===== Declaration of private or external variables ===== */
 static const char *TAG = "I2C_SLAVE_SIM_TASK";
 
 /* ===== Prototypes of private functions ===== */
 esp_err_t initialize_i2c_slave(uint16_t slave_addr);
-uint8_t check_frame_format(uint8_t* frame);
 
 /* ===== Implementations of public functions ===== */
 void slave_sim_task(void *pvParameter)
@@ -88,9 +84,4 @@ esp_err_t initialize_i2c_slave(uint16_t slave_addr)
 
     i2c_param_config(i2c_slave_port, &i2c_slave_config);
     return i2c_driver_install(i2c_slave_port, i2c_slave_config.mode, I2C_SLAVE_RX_BUF_LEN, I2C_SLAVE_TX_BUF_LEN, 0);
-}
-
-uint8_t check_frame_format(uint8_t* frame)
-{
-    return (frame[0] == COMMAND_START && frame[2] == COMMAND_END);
 }

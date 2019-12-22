@@ -14,9 +14,6 @@
 #include "driver/i2c.h"
 
 /* ===== Macros of public constants ===== */
-#define I2C_ESP_SLAVE_ADDR  0x28
-#define I2C_SLAVE_SCL_IO    26 	    // gpio for I2C slave clock (SCL)
-#define I2C_SLAVE_SDA_IO    25 	    // gpio for I2c slave data (SDA)
 
 /* ===== Public structs and enums ===== */
 typedef enum {
