@@ -18,7 +18,7 @@
 #include "wifi.h"
 #include "echo_uart.h"
 #include "i2c_master.h"
-#include "i2c_slave.h"
+#include "slave_sim_task.h"
 
 #ifdef CONFIG_HTTP
 	#include "http_tasks.h"
@@ -56,8 +56,7 @@ void app_main()
 	initialize_command_processor(wifi_module);
 
 	// do not use I2C for now
-	// initialize_i2c_master();
-	// initialize_i2c_slave(I2C_ESP_SLAVE_ADDR);
+	initialize_i2c_master();
 
 	// NOTE: 
 	// printf is redirected to the UART and it is thread safe, 
@@ -82,8 +81,8 @@ void app_main()
 	xTaskCreate(&echo_task, "echo_task", 2048, NULL, 4, NULL);
 	
 	// do not use I2C for now
-	// xTaskCreate(&i2c_master_task, "i2c_master_task", 2048, NULL, 4, NULL);
-	// xTaskCreate(&i2c_slave_task, "i2c_slave_task", 2048, NULL, 4, NULL);
+	xTaskCreate(&i2c_master_task, "i2c_master_task", 2048, NULL, 4, NULL);
+	xTaskCreate(&slave_sim_task, "slave_sim_task", 2048, NULL, 4, NULL);
 
 	// vTaskStartScheduler is called in the startup code before app_main is executed (see start_cpu0 function in ESP-IDF components/esp32/cpu_start.c)
 }

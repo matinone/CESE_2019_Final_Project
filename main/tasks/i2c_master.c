@@ -31,7 +31,7 @@
 #define COMMAND_LENGTH              3
 
 /* ===== Declaration of private or external variables ===== */
-QueueHandle_t queue_i2c_to_wifi;
+// QueueHandle_t queue_i2c_to_wifi;
 static const char* TAG = "I2C_MASTER_TASK";
 
 /* ===== Prototypes of private functions ===== */
@@ -41,11 +41,11 @@ static const char* TAG = "I2C_MASTER_TASK";
 esp_err_t initialize_i2c_master()
 {
     // create a queue capable of containing 5 char values
-    queue_i2c_to_wifi = xQueueCreate(5, sizeof(uint8_t));
-    if (queue_i2c_to_wifi == NULL)
-    {
-        printf("Could not create uart_to_i2c QUEUE.\n");
-    }
+    // queue_i2c_to_wifi = xQueueCreate(5, sizeof(uint8_t));
+    // if (queue_i2c_to_wifi == NULL)
+    // {
+    //     printf("Could not create uart_to_i2c QUEUE.\n");
+    // }
 
     int i2c_master_port = I2C_MASTER_NUM;
     i2c_config_t i2c_master_config = {
@@ -68,7 +68,7 @@ void i2c_master_task(void *pvParameter)
 {
     int ret;
     uint8_t* data_rd = (uint8_t*)malloc(DATA_LENGTH);
-    BaseType_t xStatus;
+    // BaseType_t xStatus;
 
     while (1)   
     {
@@ -84,11 +84,13 @@ void i2c_master_task(void *pvParameter)
             if (*(data_rd) == COMMAND_START && *(data_rd + 2) == COMMAND_END)
             {
                 ESP_LOGI(TAG, "I2C Master Task read from slave the value: %d\n", *(data_rd + 1));
-                xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_rd + 1, 0);
-                if (xStatus != pdPASS)
-                {
-                    printf("Could not send the data to the queue.\n");
-                }
+                // xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_rd + 1, 0);
+                // if (xStatus != pdPASS)
+                // {
+                //     printf("Could not send the data to the queue.\n");
+                // }
+                *(data_rd + 1) = *(data_rd + 1) + 1;
+                i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_rd, DATA_LENGTH);
             }
         } 
         else 

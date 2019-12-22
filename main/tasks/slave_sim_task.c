@@ -27,6 +27,7 @@ static const char *TAG = "I2C_SLAVE_SIM_TASK";
 
 /* ===== Prototypes of private functions ===== */
 esp_err_t initialize_i2c_slave(uint16_t slave_addr);
+uint8_t check_frame_format(uint8_t* frame);
 
 /* ===== Implementations of public functions ===== */
 void slave_sim_task(void *pvParameter)
@@ -44,20 +45,23 @@ void slave_sim_task(void *pvParameter)
         // do something about this
     }
 
+    // initially send something to start the whole process
+    command_frame[0] = COMMAND_START;
+    command_frame[1] = 'A';
+    command_frame[2] = COMMAND_END;
+    sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
+
     while (1)
     {
         // read data from slave buffer
         slave_read_buffer_size = i2c_slave_read_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 1000 / portTICK_RATE_MS);
-        if (slave_read_buffer_size > 0 && command_frame[0] == COMMAND_START && command_frame[2] == COMMAND_END)
+        if (slave_read_buffer_size > 0 && check_frame_format(command_frame))
         {
             ESP_LOGI(TAG, "I2C Slave Sim Task read from slave buffer: %d\n", command_frame[1]);
-            // send the same command back to the master
+            command_frame[1]++;
             sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
             if (sent_size == 0)    {
                 printf("I2C slave buffer is full, UNABLE to write\n");
-            }
-            else    {
-                printf("%d successfully written to I2C slave buffer\n", command_frame[1]);
             }
         }
 
@@ -86,3 +90,7 @@ esp_err_t initialize_i2c_slave(uint16_t slave_addr)
     return i2c_driver_install(i2c_slave_port, i2c_slave_config.mode, I2C_SLAVE_RX_BUF_LEN, I2C_SLAVE_TX_BUF_LEN, 0);
 }
 
+uint8_t check_frame_format(uint8_t* frame)
+{
+    return (frame[0] == COMMAND_START && frame[2] == COMMAND_END);
+}

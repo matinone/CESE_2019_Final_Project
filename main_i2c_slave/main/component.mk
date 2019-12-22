@@ -1,3 +1,3 @@
 
-COMPONENT_ADD_INCLUDEDIRS += ../../main/inc
-COMPONENT_SRCDIRS += ./ ../../main
+COMPONENT_ADD_INCLUDEDIRS += ./inc ./slave_sim_task/inc
+COMPONENT_SRCDIRS += ./ ./slave_sim_task
