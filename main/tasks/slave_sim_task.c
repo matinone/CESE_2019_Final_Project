@@ -63,9 +63,12 @@ void slave_sim_task(void *pvParameter)
         {
             // ESP_LOGI(TAG, "I2C Slave Sim Task read from slave buffer: %d\n", command_frame[1]);
             command_data = command_frame[1];
-            // command_frame[1]++;
+
+            // send back to the master a message indicating that the command was correctly received
+            command_frame[1] = COMMAND_OK;
             sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
-            if (sent_size == 0)    {
+            if (sent_size == 0)
+            {
                 printf("I2C slave buffer is full, UNABLE to write\n");
             }
         }

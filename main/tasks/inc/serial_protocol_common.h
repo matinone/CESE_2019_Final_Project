@@ -30,6 +30,8 @@
 #define COMMAND_CONTINUE    'C'
 #define COMMAND_RESET       'R'
 
+#define COMMAND_OK          'K'
+
 /* ===== Public structs and enums ===== */
 
 /* ===== Prototypes of public functions ===== */

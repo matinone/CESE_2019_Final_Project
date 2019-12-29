@@ -61,29 +61,37 @@ esp_err_t initialize_i2c_master()
 void i2c_master_task(void *pvParameter)
 {
     int ret;
-    uint8_t data_slave[COMMAND_LENGTH];
+    uint8_t data_to_slave[COMMAND_LENGTH];
+    uint8_t data_from_slave[COMMAND_LENGTH];
     // BaseType_t xStatus;
+
+    data_to_slave[0] = COMMAND_START;
+    data_to_slave[1] = COMMAND_START_B;
+    data_to_slave[2] = COMMAND_END;
 
     while (1)   
     {
-        ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_slave, COMMAND_LENGTH);
+        ret = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_LENGTH);
         
         if (ret == ESP_ERR_TIMEOUT) 
         {
-            printf("I2C Master Read Slave TIMEOUT\n");
+            printf("I2C Master Write Slave TIMEOUT\n");
         } 
         else if (ret == ESP_OK) 
-        {   
-            if (check_frame_format(data_slave))
+        {
+            ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_LENGTH);
+            if (ret == ESP_OK && check_frame_format(data_from_slave))
             {
-                // ESP_LOGI(TAG, "I2C Master Task read from slave the value: %d\n", *(data_slave + 1));
-                // xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_slave + 1, 0);
+                if(data_from_slave[1] == COMMAND_OK)
+                {
+                    ESP_LOGI(TAG, "Received ACK from slave for command %d\n", data_to_slave[1]);
+                }
+                // xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_to_slave + 1, 0);
                 // if (xStatus != pdPASS)
                 // {
                 //     printf("Could not send the data to the queue.\n");
                 // }
-                // *(data_slave + 1) = *(data_slave + 1) + 1;
-                i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_slave, COMMAND_LENGTH);
+                // i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_LENGTH);
             }
         } 
         else 
@@ -91,7 +99,7 @@ void i2c_master_task(void *pvParameter)
             printf("Master Read Slave error: %s\n", esp_err_to_name(ret));
         }
 
-        vTaskDelay(1000 / portTICK_RATE_MS);
+        vTaskDelay(3000 / portTICK_RATE_MS);
     }
 }
 
