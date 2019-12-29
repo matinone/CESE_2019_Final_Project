@@ -27,6 +27,7 @@ static slave_machine_state_t slave_state;
 
 /* ===== Prototypes of private functions ===== */
 esp_err_t initialize_i2c_slave(uint16_t slave_addr);
+slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, uint8_t current_cmd);
 
 /* ===== Implementations of public functions ===== */
 void slave_sim_task(void *pvParameter)
@@ -36,8 +37,6 @@ void slave_sim_task(void *pvParameter)
     size_t sent_size;
     int32_t slave_read_buffer_size;
     esp_err_t error_state;
-    uint8_t state_time_counter = 0;
-    slave_machine_state_t paused_state = SLAVE_IDLE;
 
     // set initial state
     slave_state = SLAVE_IDLE;
@@ -52,7 +51,7 @@ void slave_sim_task(void *pvParameter)
 
     // initially send something to start the whole process
     command_frame[0] = COMMAND_START;
-    command_frame[1] = 'A';
+    command_frame[1] = COMMAND_START_A;
     command_frame[2] = COMMAND_END;
     sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
 
@@ -77,95 +76,7 @@ void slave_sim_task(void *pvParameter)
 
         ESP_LOGI(TAG, "Current SLAVE STATE: %d.\n", (uint8_t)slave_state);
 
-        switch (slave_state)
-        {
-        case SLAVE_IDLE:
-            if(command_data == COMMAND_START_A)
-            {
-                ESP_LOGI(TAG, "Slave IDLE received command A, switching to SLAVE_PROCESS_A.\n");
-                slave_state = SLAVE_PROCESS_A;
-                state_time_counter = 0;
-            }
-            else if(command_data == COMMAND_START_B)
-            {
-                ESP_LOGI(TAG, "Slave IDLE received command B, switching to SLAVE_PROCESS_B.\n");
-                slave_state = SLAVE_PROCESS_B;
-                state_time_counter = 0;
-            }
-
-            break;
-        case SLAVE_PROCESS_A:
-            if(state_time_counter == 0)
-            {
-                ESP_LOGI(TAG, "Entered into SLAVE_PROCESS_A.\n");
-            }
-            state_time_counter++;
-            if(state_time_counter == SLAVE_PROCESS_A_TIME)
-            {
-                ESP_LOGI(TAG, "Slave PROCESS_A finished, switching to SLAVE_DONE.\n");
-                slave_state = SLAVE_DONE;
-            }
-            else if(command_data == COMMAND_PAUSE)
-            {
-                ESP_LOGI(TAG, "Slave PROCESS_A received command P, switching to SLAVE_PAUSE.\n");
-                paused_state = slave_state;
-                slave_state = SLAVE_PAUSE;
-            }
-            else if(command_data == COMMAND_RESET)
-            {
-                ESP_LOGI(TAG, "Slave PROCESS_A received command R, switching to SLAVE_IDLE.\n");
-                slave_state = SLAVE_IDLE;
-            }
-
-            break;
-        case SLAVE_PROCESS_B:
-            if(state_time_counter == 0)
-            {
-                ESP_LOGI(TAG, "Entered into SLAVE_PROCESS_B.\n");
-            }
-            state_time_counter++;
-            if(state_time_counter == SLAVE_PROCESS_B_TIME)
-            {
-                ESP_LOGI(TAG, "Slave PROCESS_B finished, switching to SLAVE_DONE.\n");
-                slave_state = SLAVE_DONE;
-            }
-            else if(command_data == COMMAND_PAUSE)
-            {
-                ESP_LOGI(TAG, "Slave PROCESS_B received command P, switching to SLAVE_PAUSE.\n");
-                paused_state = slave_state;
-                slave_state = SLAVE_PAUSE;
-            }
-            else if(command_data == COMMAND_RESET)
-            {
-                ESP_LOGI(TAG, "Slave PROCESS_B received command R, switching to SLAVE_IDLE.\n");
-                slave_state = SLAVE_IDLE;
-            }
-
-            break;
-        case SLAVE_PAUSE:
-            if(command_data == COMMAND_CONTINUE)
-            {
-                ESP_LOGI(TAG, "Slave PAUSE received command C, switching to previous paused state.\n");
-                slave_state = paused_state;
-            }
-            else if(command_data == COMMAND_RESET)
-            {
-                ESP_LOGI(TAG, "Slave PAUSE received command R, switching to SLAVE_IDLE.\n");
-                slave_state = SLAVE_IDLE;
-            }
-
-            break;
-
-        case SLAVE_DONE:
-            ESP_LOGI(TAG, "Slave DONE, switching to SLAVE_IDLE.\n");
-            slave_state = SLAVE_IDLE;
-
-            break;
-
-        default:
-            break;
-        }
-
+        slave_state = update_slave_sim_fsm(slave_state, command_data);
 
         vTaskDelay(1000 / portTICK_RATE_MS);
     }
@@ -190,4 +101,101 @@ esp_err_t initialize_i2c_slave(uint16_t slave_addr)
 
     i2c_param_config(i2c_slave_port, &i2c_slave_config);
     return i2c_driver_install(i2c_slave_port, i2c_slave_config.mode, I2C_SLAVE_RX_BUF_LEN, I2C_SLAVE_TX_BUF_LEN, 0);
+}
+
+
+slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, uint8_t current_cmd)
+{
+    static uint8_t state_time_counter = 0;
+    static slave_machine_state_t paused_state = SLAVE_IDLE;
+    switch (current_state)
+    {
+    case SLAVE_IDLE:
+        if(current_cmd == COMMAND_START_A)
+        {
+            ESP_LOGI(TAG, "Slave IDLE received command A, switching to SLAVE_PROCESS_A.\n");
+            current_state = SLAVE_PROCESS_A;
+            state_time_counter = 0;
+        }
+        else if(current_cmd == COMMAND_START_B)
+        {
+            ESP_LOGI(TAG, "Slave IDLE received command B, switching to SLAVE_PROCESS_B.\n");
+            current_state = SLAVE_PROCESS_B;
+            state_time_counter = 0;
+        }
+
+        break;
+    case SLAVE_PROCESS_A:
+        if(state_time_counter == 0)
+        {
+            ESP_LOGI(TAG, "Entered into SLAVE_PROCESS_A.\n");
+        }
+        state_time_counter++;
+        if(state_time_counter == SLAVE_PROCESS_A_TIME)
+        {
+            ESP_LOGI(TAG, "Slave PROCESS_A finished, switching to SLAVE_DONE.\n");
+            current_state = SLAVE_DONE;
+        }
+        else if(current_cmd == COMMAND_PAUSE)
+        {
+            ESP_LOGI(TAG, "Slave PROCESS_A received command P, switching to SLAVE_PAUSE.\n");
+            paused_state = current_state;
+            current_state = SLAVE_PAUSE;
+        }
+        else if(current_cmd == COMMAND_RESET)
+        {
+            ESP_LOGI(TAG, "Slave PROCESS_A received command R, switching to SLAVE_IDLE.\n");
+            current_state = SLAVE_IDLE;
+        }
+
+        break;
+    case SLAVE_PROCESS_B:
+        if(state_time_counter == 0)
+        {
+            ESP_LOGI(TAG, "Entered into SLAVE_PROCESS_B.\n");
+        }
+        state_time_counter++;
+        if(state_time_counter == SLAVE_PROCESS_B_TIME)
+        {
+            ESP_LOGI(TAG, "Slave PROCESS_B finished, switching to SLAVE_DONE.\n");
+            current_state = SLAVE_DONE;
+        }
+        else if(current_cmd == COMMAND_PAUSE)
+        {
+            ESP_LOGI(TAG, "Slave PROCESS_B received command P, switching to SLAVE_PAUSE.\n");
+            paused_state = current_state;
+            current_state = SLAVE_PAUSE;
+        }
+        else if(current_cmd == COMMAND_RESET)
+        {
+            ESP_LOGI(TAG, "Slave PROCESS_B received command R, switching to SLAVE_IDLE.\n");
+            current_state = SLAVE_IDLE;
+        }
+
+        break;
+    case SLAVE_PAUSE:
+        if(current_cmd == COMMAND_CONTINUE)
+        {
+            ESP_LOGI(TAG, "Slave PAUSE received command C, switching to previous paused state.\n");
+            current_state = paused_state;
+        }
+        else if(current_cmd == COMMAND_RESET)
+        {
+            ESP_LOGI(TAG, "Slave PAUSE received command R, switching to SLAVE_IDLE.\n");
+            current_state = SLAVE_IDLE;
+        }
+
+        break;
+
+    case SLAVE_DONE:
+        ESP_LOGI(TAG, "Slave DONE, switching to SLAVE_IDLE.\n");
+        current_state = SLAVE_IDLE;
+
+        break;
+
+    default:
+        break;
+    }
+
+    return current_state;
 }
