@@ -79,13 +79,13 @@ void i2c_master_task(void *pvParameter)
         {   
             if (*(data_rd) == COMMAND_START && *(data_rd + 2) == COMMAND_END)
             {
-                ESP_LOGI(TAG, "I2C Master Task read from slave the value: %d\n", *(data_rd + 1));
+                // ESP_LOGI(TAG, "I2C Master Task read from slave the value: %d\n", *(data_rd + 1));
                 // xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_rd + 1, 0);
                 // if (xStatus != pdPASS)
                 // {
                 //     printf("Could not send the data to the queue.\n");
                 // }
-                *(data_rd + 1) = *(data_rd + 1) + 1;
+                // *(data_rd + 1) = *(data_rd + 1) + 1;
                 i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_rd, DATA_LENGTH);
             }
         } 

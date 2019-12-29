@@ -17,11 +17,11 @@
 
 /* ===== Public structs and enums ===== */
 typedef enum {
-    SLAVE_RESET,
-    SLAVE_STOP,
+    SLAVE_IDLE,
+    SLAVE_PAUSE,
     SLAVE_PROCESS_A,
     SLAVE_PROCESS_B,
-    SLAVE_FINISH,
+    SLAVE_DONE,
 }   slave_machine_state_t;
 
 /* ===== Prototypes of public functions ===== */
