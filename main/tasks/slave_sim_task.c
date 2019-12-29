@@ -49,16 +49,10 @@ void slave_sim_task(void *pvParameter)
         // do something about this
     }
 
-    // initially send something to start the whole process
-    command_frame[0] = COMMAND_START;
-    command_frame[1] = COMMAND_START_A;
-    command_frame[2] = COMMAND_END;
-    sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
-
     while (1)
     {
         // read data from slave buffer
-        slave_read_buffer_size = i2c_slave_read_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 1000 / portTICK_RATE_MS);
+        slave_read_buffer_size = i2c_slave_read_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 250 / portTICK_RATE_MS);
         if (slave_read_buffer_size > 0 && check_frame_format(command_frame))
         {
             // ESP_LOGI(TAG, "I2C Slave Sim Task read from slave buffer: %d\n", command_frame[1]);
@@ -77,11 +71,11 @@ void slave_sim_task(void *pvParameter)
             command_data = 0;
         }
 
-        ESP_LOGI(TAG, "Current SLAVE STATE: %d.\n", (uint8_t)slave_state);
+        // ESP_LOGI(TAG, "Current SLAVE STATE: %d.\n", (uint8_t)slave_state);
 
         slave_state = update_slave_sim_fsm(slave_state, command_data);
 
-        vTaskDelay(1000 / portTICK_RATE_MS);
+        vTaskDelay(250 / portTICK_RATE_MS);
     }
 }
 

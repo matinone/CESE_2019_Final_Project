@@ -10,8 +10,10 @@
 /* ===== Dependencies ===== */
 #include "i2c_master.h"
 #include "serial_protocol_common.h"
+#include "command_processor.h"
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "esp_log.h"
 
 /* ===== Macros of private constants ===== */
@@ -25,8 +27,9 @@
 #define NACK_VAL                    0x1         // I2C nack value
 
 /* ===== Declaration of private or external variables ===== */
-// QueueHandle_t queue_i2c_to_wifi;
 static const char* TAG = "I2C_MASTER_TASK";
+extern QueueHandle_t queue_command_processor_rx;
+QueueHandle_t queue_i2c_master;
 
 /* ===== Prototypes of private functions ===== */
 
@@ -34,12 +37,12 @@ static const char* TAG = "I2C_MASTER_TASK";
 /* ===== Implementations of public functions ===== */
 esp_err_t initialize_i2c_master()
 {
-    // create a queue capable of containing 5 char values
-    // queue_i2c_to_wifi = xQueueCreate(5, sizeof(uint8_t));
-    // if (queue_i2c_to_wifi == NULL)
-    // {
-    //     printf("Could not create uart_to_i2c QUEUE.\n");
-    // }
+    // create a queue capable of containing 5 uint8_t values
+    queue_i2c_master = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_i2c_master == NULL)
+    {
+        printf("Could not create queue_i2c_master QUEUE.\n");
+    }
 
     int i2c_master_port = I2C_MASTER_NUM;
     i2c_config_t i2c_master_config = {
@@ -63,41 +66,74 @@ void i2c_master_task(void *pvParameter)
     int ret;
     uint8_t data_to_slave[COMMAND_LENGTH];
     uint8_t data_from_slave[COMMAND_LENGTH];
-    // BaseType_t xStatus;
+    uint8_t command_received;
+    BaseType_t xStatus;
+
+    rx_command_t ack_command;
+    ack_command.rx_id = I2C_MASTER_MOD;
+
 
     data_to_slave[0] = COMMAND_START;
-    data_to_slave[1] = COMMAND_START_B;
     data_to_slave[2] = COMMAND_END;
 
     while (1)   
     {
-        ret = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_LENGTH);
-        
-        if (ret == ESP_ERR_TIMEOUT) 
+        // read data from the command processor queue
+        xStatus = xQueueReceive(queue_i2c_master, &command_received, 500 / portTICK_RATE_MS);
+        if (xStatus == pdPASS)
         {
-            printf("I2C Master Write Slave TIMEOUT\n");
-        } 
-        else if (ret == ESP_OK) 
-        {
-            ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_LENGTH);
-            if (ret == ESP_OK && check_frame_format(data_from_slave))
+            ack_command.command = CMD_FAIL;
+            ESP_LOGI(TAG, "Received %d from Command Processor, sending it to slave\n", command_received);
+            data_to_slave[1] = command_received;
+            ret = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_LENGTH);
+            if(ret == ESP_OK)
             {
-                if(data_from_slave[1] == COMMAND_OK)
+                // read ack from the slave
+                ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_LENGTH);
+                if (ret == ESP_OK && check_frame_format(data_from_slave))
                 {
-                    ESP_LOGI(TAG, "Received ACK from slave for command %d\n", data_to_slave[1]);
+                    if(data_from_slave[1] == COMMAND_OK)
+                    {
+                        // ESP_LOGI(TAG, "Received ACK from slave for command %d\n", command_received);
+                        ack_command.command = CMD_OK;
+                    }
                 }
-                // xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_to_slave + 1, 0);
-                // if (xStatus != pdPASS)
-                // {
-                //     printf("Could not send the data to the queue.\n");
-                // }
-                // i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_LENGTH);
             }
-        } 
-        else 
-        {
-            printf("Master Read Slave error: %s\n", esp_err_to_name(ret));
+
+            // send back ack status to command processor
+            xStatus = xQueueSendToBack(queue_command_processor_rx, &ack_command, 100 / portTICK_RATE_MS);
+            if (xStatus != pdPASS)
+            {
+                ESP_LOGI(TAG, "Could not send ACK back to the Command Processor.\n");
+            }
+
         }
+
+        // if (ret == ESP_ERR_TIMEOUT)
+        // {
+        //     printf("I2C Master Write Slave TIMEOUT\n");
+        // }
+        // else if (ret == ESP_OK)
+        // {
+        //     ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_LENGTH);
+        //     if (ret == ESP_OK && check_frame_format(data_from_slave))
+        //     {
+        //         if(data_from_slave[1] == COMMAND_OK)
+        //         {
+        //             ESP_LOGI(TAG, "Received ACK from slave for command %d\n", data_to_slave[1]);
+        //         }
+        //         // xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_to_slave + 1, 0);
+        //         // if (xStatus != pdPASS)
+        //         // {
+        //         //     printf("Could not send the data to the queue.\n");
+        //         // }
+        //         // i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_LENGTH);
+        //     }
+        // }
+        // else
+        // {
+        //     printf("Master Read Slave error: %s\n", esp_err_to_name(ret));
+        // }
 
         vTaskDelay(3000 / portTICK_RATE_MS);
     }

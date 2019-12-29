@@ -13,8 +13,7 @@
 #include "ble_server.h"
 #include "mqtt.h"
 #include "nvs_storage.h"
-#include "i2c_master.h"
-#include "i2c_slave.h"
+#include "serial_protocol_common.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -27,7 +26,6 @@
 
 /* ===== Macros of private constants ===== */
 #define CMD_RX_CHECK_TIME_MS 500
-#define I2C_DATA_LENGTH 3
 
 /* ===== Declaration of private or external variables ===== */
 QueueHandle_t queue_command_processor_rx;
@@ -36,9 +34,10 @@ extern QueueHandle_t queue_http_tx;
 extern QueueHandle_t queue_tls_https_tx;
 extern QueueHandle_t queue_mqtt_tx;
 extern QueueHandle_t queue_ble_server_tx;
+extern QueueHandle_t queue_i2c_master;
 
 wireless_state_t wireless_state;
-// static const char* TAG = "CMD_PROCESSOR_TASK";
+static const char* TAG = "COMMAND_PROCESSOR_TASK";
 
 /* ===== Prototypes of private functions ===== */
 char* translate_rx_module(rx_module_t module);
@@ -67,8 +66,7 @@ void command_processor_task(void *pvParameter)
     rx_command_t current_command;
     BaseType_t xStatus;
     QueueHandle_t* generic_queue_handle_ptr;
-    uint8_t i2c_command_frame[I2C_DATA_LENGTH] = {'s', 0, 'e'};
-    esp_err_t i2c_ret_value;
+    uint8_t master_serial_command;
 
     while (1)
     {
@@ -176,41 +174,32 @@ void command_processor_task(void *pvParameter)
                     }
                     break;
                 case CMD_START:
-                    // write to the I2C slave
-                    i2c_command_frame[1] = CMD_START;
-                    i2c_ret_value = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, i2c_command_frame, I2C_DATA_LENGTH);
-                    if(i2c_ret_value == ESP_ERR_TIMEOUT)    {
-                        printf("Master to slave I2C write timeout.\n");
+                    // write to the I2C master queue
+                    master_serial_command = COMMAND_START_A;
+                    xStatus = xQueueSendToBack(queue_i2c_master, &master_serial_command, 500 / portTICK_RATE_MS);
+
+                    // wait for ack from the master module
+                    xStatus = xQueueReceive(queue_command_processor_rx, &current_command,  2000 / portTICK_RATE_MS);
+                    if (xStatus == pdPASS && current_command.rx_id == I2C_MASTER_MOD && current_command.command == CMD_OK)
+                    {
+                        ESP_LOGI(TAG, "Command successfully sent to Slave\n");
                     }
-                    else if(i2c_ret_value == ESP_OK)    {
-                        printf("CMD_START sent to the slave.\n");
+                    else
+                    {
+                        ESP_LOGI(TAG, "Command could not be sent to Slave\n");
                     }
-                    else    {
-                        printf("Master to slave I2C write error: %s.\n", esp_err_to_name(i2c_ret_value));
-                    }
+
 
                     break;
                 case CMD_STOP:
-                    // write to the I2C slave
-                    i2c_command_frame[1] = CMD_STOP;
-                    i2c_ret_value = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, i2c_command_frame, I2C_DATA_LENGTH);
-                    if(i2c_ret_value == ESP_ERR_TIMEOUT)    {
-                        printf("Master to slave I2C write timeout.\n");
-                    }
-                    else if(i2c_ret_value == ESP_OK)    {
-                        printf("CMD_STOP sent to the slave.\n");
-                    }
-                    else    {
-                        printf("Master to slave I2C write error: %s.\n", esp_err_to_name(i2c_ret_value));
-                    }
+                    // write to the I2C master queue
 
                     break;
-
                 default:
                     break;
             }
         }
-        
+
         vTaskDelay(CMD_RX_CHECK_TIME_MS / portTICK_RATE_MS);
     }
 }
@@ -251,8 +240,8 @@ char* translate_rx_module(rx_module_t module)
             return "BLE_SERVER";
         case UART_RX:
             return "UART_RX";
-        case I2C_SLAVE:
-            return "I2C_SLAVE";
+        case I2C_MASTER_MOD:
+            return "I2C_MASTER";
         default:
             return "UNKNOWN";
     }
@@ -278,6 +267,10 @@ char* translate_command_type(command_type_t command)
             return "CMD_ECHO";
         case CMD_INVALID:
             return "CMD_INVALID";
+        case CMD_OK:
+            return "CMD_OK";
+        case CMD_FAIL:
+            return "CMD_FAIL";
         default:
             return "UNKNOWN";
     }

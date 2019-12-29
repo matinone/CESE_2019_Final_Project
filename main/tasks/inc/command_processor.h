@@ -26,12 +26,12 @@
 |  Description: holds possible modules that can send commands.
 |
 |  Values:
-|       HTTP_RX     - HTTP module 
-|       HTTPS_RX    - HTTPS module
-|       MQTT_RX     - MQTT module
-|       BLE_SERVER  - BLE module
-|       UART_RX     - UART module
-|       I2C_SLAVE   - I2C slave module
+|       HTTP_RX         - HTTP module
+|       HTTPS_RX        - HTTPS module
+|       MQTT_RX         - MQTT module
+|       BLE_SERVER      - BLE module
+|       UART_RX         - UART module
+|       I2C_MASTER_MOD  - I2C master module
 *-------------------------------------------------------------------*/
 typedef enum {
     HTTP_RX,
@@ -39,7 +39,7 @@ typedef enum {
     MQTT_RX,
     BLE_SERVER,
     UART_RX,
-    I2C_SLAVE,
+    I2C_MASTER_MOD,
 }   rx_module_t;
 
 /*------------------------------------------------------------------
