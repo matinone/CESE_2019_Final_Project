@@ -80,13 +80,13 @@ void slave_sim_task(void *pvParameter)
         switch (slave_state)
         {
         case SLAVE_IDLE:
-            if(command_data == 'A')
+            if(command_data == COMMAND_START_A)
             {
                 ESP_LOGI(TAG, "Slave IDLE received command A, switching to SLAVE_PROCESS_A.\n");
                 slave_state = SLAVE_PROCESS_A;
                 state_time_counter = 0;
             }
-            else if(command_data == 'B')
+            else if(command_data == COMMAND_START_B)
             {
                 ESP_LOGI(TAG, "Slave IDLE received command B, switching to SLAVE_PROCESS_B.\n");
                 slave_state = SLAVE_PROCESS_B;
@@ -105,11 +105,16 @@ void slave_sim_task(void *pvParameter)
                 ESP_LOGI(TAG, "Slave PROCESS_A finished, switching to SLAVE_DONE.\n");
                 slave_state = SLAVE_DONE;
             }
-            else if(command_data == 'P')
+            else if(command_data == COMMAND_PAUSE)
             {
                 ESP_LOGI(TAG, "Slave PROCESS_A received command P, switching to SLAVE_PAUSE.\n");
                 paused_state = slave_state;
                 slave_state = SLAVE_PAUSE;
+            }
+            else if(command_data == COMMAND_RESET)
+            {
+                ESP_LOGI(TAG, "Slave PROCESS_A received command R, switching to SLAVE_IDLE.\n");
+                slave_state = SLAVE_IDLE;
             }
 
             break;
@@ -124,20 +129,31 @@ void slave_sim_task(void *pvParameter)
                 ESP_LOGI(TAG, "Slave PROCESS_B finished, switching to SLAVE_DONE.\n");
                 slave_state = SLAVE_DONE;
             }
-            else if(command_data == 'P')
+            else if(command_data == COMMAND_PAUSE)
             {
                 ESP_LOGI(TAG, "Slave PROCESS_B received command P, switching to SLAVE_PAUSE.\n");
                 paused_state = slave_state;
                 slave_state = SLAVE_PAUSE;
             }
+            else if(command_data == COMMAND_RESET)
+            {
+                ESP_LOGI(TAG, "Slave PROCESS_B received command R, switching to SLAVE_IDLE.\n");
+                slave_state = SLAVE_IDLE;
+            }
 
             break;
         case SLAVE_PAUSE:
-            if(command_data == 'C')
+            if(command_data == COMMAND_CONTINUE)
             {
                 ESP_LOGI(TAG, "Slave PAUSE received command C, switching to previous paused state.\n");
                 slave_state = paused_state;
             }
+            else if(command_data == COMMAND_RESET)
+            {
+                ESP_LOGI(TAG, "Slave PAUSE received command R, switching to SLAVE_IDLE.\n");
+                slave_state = SLAVE_IDLE;
+            }
+
             break;
 
         case SLAVE_DONE:

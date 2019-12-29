@@ -24,6 +24,12 @@
 #define COMMAND_END         'e'
 #define COMMAND_LENGTH      3
 
+#define COMMAND_START_A     'A'
+#define COMMAND_START_B     'B'
+#define COMMAND_PAUSE       'P'
+#define COMMAND_CONTINUE    'C'
+#define COMMAND_RESET       'R'
+
 /* ===== Public structs and enums ===== */
 
 /* ===== Prototypes of public functions ===== */
