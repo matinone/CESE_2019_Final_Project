@@ -63,7 +63,7 @@ void slave_sim_task(void *pvParameter)
             sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
             if (sent_size == 0)
             {
-                printf("I2C slave buffer is full, UNABLE to write\n");
+                printf("I2C slave buffer is full, slave UNABLE to write master\n");
             }
         }
         else
@@ -103,8 +103,11 @@ esp_err_t initialize_i2c_slave(uint16_t slave_addr)
 
 slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, uint8_t current_cmd)
 {
-    static uint8_t state_time_counter = 0;
-    static slave_machine_state_t paused_state = SLAVE_IDLE;
+    static uint8_t state_time_counter           = 0;
+    static slave_machine_state_t paused_state   = SLAVE_IDLE;
+    uint8_t command_frame[COMMAND_LENGTH]       = {COMMAND_START, 0, COMMAND_END};
+    size_t sent_size;
+
     switch (current_state)
     {
     case SLAVE_IDLE:
@@ -132,6 +135,14 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
         {
             ESP_LOGI(TAG, "Slave PROCESS_A finished, switching to SLAVE_DONE.\n");
             current_state = SLAVE_DONE;
+
+            // notify master that the process finished
+            command_frame[1] = COMMAND_START_A;
+            sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
+            if (sent_size == 0)
+            {
+                printf("I2C slave buffer is full, slave UNABLE to write master\n");
+            }
         }
         else if(current_cmd == COMMAND_PAUSE)
         {
@@ -156,6 +167,14 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
         {
             ESP_LOGI(TAG, "Slave PROCESS_B finished, switching to SLAVE_DONE.\n");
             current_state = SLAVE_DONE;
+
+            // notify master that the process finished
+            command_frame[1] = COMMAND_START_A;
+            sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
+            if (sent_size == 0)
+            {
+                printf("I2C slave buffer is full, slave UNABLE to write master\n");
+            }
         }
         else if(current_cmd == COMMAND_PAUSE)
         {

@@ -12,6 +12,7 @@
 #include "serial_protocol_common.h"
 #include "command_processor.h"
 #include <stdio.h>
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
@@ -109,33 +110,15 @@ void i2c_master_task(void *pvParameter)
 
         }
 
-        // if (ret == ESP_ERR_TIMEOUT)
-        // {
-        //     printf("I2C Master Write Slave TIMEOUT\n");
-        // }
-        // else if (ret == ESP_OK)
-        // {
-        //     ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_LENGTH);
-        //     if (ret == ESP_OK && check_frame_format(data_from_slave))
-        //     {
-        //         if(data_from_slave[1] == COMMAND_OK)
-        //         {
-        //             ESP_LOGI(TAG, "Received ACK from slave for command %d\n", data_to_slave[1]);
-        //         }
-        //         // xStatus = xQueueSendToBack(queue_i2c_to_wifi, data_to_slave + 1, 0);
-        //         // if (xStatus != pdPASS)
-        //         // {
-        //         //     printf("Could not send the data to the queue.\n");
-        //         // }
-        //         // i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_LENGTH);
-        //     }
-        // }
-        // else
-        // {
-        //     printf("Master Read Slave error: %s\n", esp_err_to_name(ret));
-        // }
+        // read data from the slave
+        memset(data_from_slave, 0, COMMAND_LENGTH); // clear the rx buffer
+        ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_LENGTH);
+        if (ret == ESP_OK && check_frame_format(data_from_slave))
+        {
+            ESP_LOGI(TAG, "Received %c from slave\n", data_from_slave[1]);
+        }
 
-        vTaskDelay(3000 / portTICK_RATE_MS);
+        vTaskDelay(1000 / portTICK_RATE_MS);
     }
 }
 
