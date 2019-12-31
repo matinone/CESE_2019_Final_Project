@@ -19,8 +19,8 @@
 #define I2C_SLAVE_NUM           I2C_NUM_0
 #define I2C_SLAVE_TX_BUF_LEN    1024
 #define I2C_SLAVE_RX_BUF_LEN    1024
-#define SLAVE_PROCESS_A_TIME    10
-#define SLAVE_PROCESS_B_TIME    5
+#define SLAVE_PROCESS_A_TIME    20
+#define SLAVE_PROCESS_B_TIME    10
 
 /* ===== Declaration of private or external variables ===== */
 static const char *TAG = "I2C_SLAVE_SIM_TASK";

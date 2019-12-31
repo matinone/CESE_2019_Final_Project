@@ -37,13 +37,14 @@ extern QueueHandle_t queue_ble_server_tx;
 extern QueueHandle_t queue_i2c_master;
 
 wireless_state_t wireless_state;
+rx_module_t wifi_module;
 static const char* TAG = "COMMAND_PROCESSOR_TASK";
 
 /* ===== Prototypes of private functions ===== */
 char* translate_rx_module(rx_module_t module);
 char* translate_command_type(command_type_t command);
 QueueHandle_t* get_module_queue(rx_module_t module);
-rx_module_t wifi_module;
+BaseType_t wait_for_slave_cmd_ack(rx_command_t* command);
 
 
 /* ===== Implementations of public functions ===== */
@@ -173,28 +174,19 @@ void command_processor_task(void *pvParameter)
                         printf("There is no queue handle match for module %s.\n", translate_rx_module(current_command.rx_id));
                     }
                     break;
+                // do the same for all these commands that must be sent to the slave
                 case CMD_SLAVE_START_A:
-                    // write to the I2C master queue
-                    master_serial_command = CMD_SLAVE_START_A;
-                    xStatus = xQueueSendToBack(queue_i2c_master, &master_serial_command, 500 / portTICK_RATE_MS);
-
-                    // wait for ack from the master module
-                    xStatus = xQueueReceive(queue_command_processor_rx, &current_command,  2000 / portTICK_RATE_MS);
-                    if (xStatus == pdPASS && current_command.rx_id == I2C_MASTER_MOD && current_command.command == CMD_SLAVE_OK)
-                    {
-                        ESP_LOGI(TAG, "Command successfully sent to Slave\n");
-                    }
-                    else
-                    {
-                        ESP_LOGI(TAG, "Command could not be sent to Slave\n");
-                    }
-
-
-                    break;
+                case CMD_SLAVE_START_B:
                 case CMD_SLAVE_PAUSE:
+                case CMD_SLAVE_CONTINUE:
+                case CMD_SLAVE_RESET:
                     // write to the I2C master queue
+                    master_serial_command = current_command.command;
+                    xStatus = xQueueSendToBack(queue_i2c_master, &master_serial_command, 500 / portTICK_RATE_MS);
+                    xStatus = wait_for_slave_cmd_ack(&current_command);
 
                     break;
+
                 default:
                     break;
             }
@@ -209,8 +201,14 @@ command_type_t str_to_cmd(char* str_command)
 {
     if (strstr(str_command, "CMD_SLAVE_START_A") != NULL)
         return CMD_SLAVE_START_A;
+    if (strstr(str_command, "CMD_SLAVE_START_B") != NULL)
+        return CMD_SLAVE_START_B;
     if (strstr(str_command, "CMD_SLAVE_PAUSE") != NULL)
         return CMD_SLAVE_PAUSE;
+    if (strstr(str_command, "CMD_SLAVE_CONTINUE") != NULL)
+        return CMD_SLAVE_CONTINUE;
+    if (strstr(str_command, "CMD_SLAVE_RESET") != NULL)
+        return CMD_SLAVE_RESET;
     if (strstr(str_command, "CMD_SLAVE_STATUS") != NULL)
         return CMD_SLAVE_STATUS;
     if (strstr(str_command, "CMD_WIFI") != NULL)
@@ -251,8 +249,14 @@ char* translate_command_type(command_type_t command)
     {
         case CMD_SLAVE_START_A:
             return "CMD_SLAVE_START_A";
+        case CMD_SLAVE_START_B:
+            return "CMD_SLAVE_START_B";
         case CMD_SLAVE_PAUSE:
             return "CMD_SLAVE_PAUSE";
+        case CMD_SLAVE_CONTINUE:
+            return "CMD_SLAVE_CONTINUE";
+        case CMD_SLAVE_RESET:
+            return "CMD_SLAVE_RESET";
         case CMD_SLAVE_STATUS:
             return "CMD_SLAVE_STATUS";
         case CMD_SLAVE_OK:
@@ -289,4 +293,20 @@ QueueHandle_t* get_module_queue(rx_module_t module)
         default:
             return NULL;
     }
+}
+
+BaseType_t wait_for_slave_cmd_ack(rx_command_t* command)
+{
+    BaseType_t xStatus;
+    xStatus = xQueueReceive(queue_command_processor_rx, command,  2000 / portTICK_RATE_MS);
+    if (xStatus == pdPASS && command->rx_id == I2C_MASTER_MOD && command->command == CMD_SLAVE_OK)
+    {
+        ESP_LOGI(TAG, "Command successfully sent to Slave\n");
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Command could not be sent to Slave\n");
+    }
+
+    return xStatus;
 }
