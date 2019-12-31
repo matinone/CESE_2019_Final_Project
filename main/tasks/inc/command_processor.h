@@ -17,7 +17,7 @@
 
 
 /* ===== Macros of public constants ===== */
-
+#define SLAVE_STATE_FRAME   123
 
 /* ===== Public structs and enums ===== */
 /*------------------------------------------------------------------

@@ -9,6 +9,7 @@
 /* ===== Dependencies ===== */
 #include "mqtt.h"
 #include "command_processor.h"
+#include "slave_sim_task.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -36,8 +37,9 @@
 	#define MQTT_TRANSACTION_WAIT_TIME		1000
 	#ifdef CONFIG_ADAFRUIT
 		#define CONFIG_BROKER_URI 			"mqtts://io.adafruit.com:8883"
-		#define MQTT_PUBLISH_TOPIC 			"mbrignone/feeds/command-received"
-		#define MQTT_SUBSCRIBE_TOPIC 		"mbrignone/feeds/command-sent"
+		#define MQTT_PUBLISH_TOPIC_TX 		"mbrignone/feeds/command-received"
+		#define MQTT_PUBLISH_TOPIC_STATUS 	"mbrignone/feeds/status"
+		#define MQTT_SUBSCRIBE_TOPIC_RX 	"mbrignone/feeds/command-sent"
 		#define MQTT_USERNAME 				"mbrignone"
 		#define MQTT_PASSWORD 				"01d6fd13e8af4ed3b30f580e945f5561"
 		#define BINARY_CERTIFICATE_START 	"_binary_adafruit_mqtts_certificate_pem_start"
@@ -53,8 +55,9 @@ extern QueueHandle_t queue_command_processor_rx;
 extern const uint8_t mqtts_cert_start[] asm(BINARY_CERTIFICATE_START);
 extern const uint8_t mqtts_cert_end[]   asm(BINARY_CERTIFICATE_END);
 static const char *TAG = "MQTTS_TASK";
-static char* mqtt_publish_topic = MQTT_PUBLISH_TOPIC;
-static char* mqtt_subscribe_topic = MQTT_SUBSCRIBE_TOPIC;
+static char* mqtt_publish_topic 		= MQTT_PUBLISH_TOPIC_TX;
+static char* mqtt_publish_topic_status 	= MQTT_PUBLISH_TOPIC_STATUS;
+static char* mqtt_subscribe_topic 		= MQTT_SUBSCRIBE_TOPIC_RX;
 
 const int WIFI_CONNECTED_BIT = BIT0;
 const int MQTT_CONNECTED_BIT = BIT1;
@@ -111,11 +114,26 @@ void mqtt_publish_task(void *pvParameter)
 		// read data from the queue
 		xStatus = xQueueReceive(queue_mqtt_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)	{
-			command_string_value = translate_command_type(queue_rcv_value);
-			ESP_LOGI(TAG, "Received from Command Processor TASK: %s (%d)\n", command_string_value, queue_rcv_value);
-			vTaskDelay(MQTT_TRANSACTION_WAIT_TIME / portTICK_RATE_MS);
+			// publish to the slave topic if the state was requested
+			if(queue_rcv_value == SLAVE_STATE_FRAME)
+			{
+				// receive the next value, which will be the slave state
+				xStatus = xQueueReceive(queue_mqtt_tx, &queue_rcv_value,  50 / portTICK_RATE_MS);
+				command_string_value = translate_slave_machine_state(queue_rcv_value);
+				ESP_LOGI(TAG, "Received from Command Processor TASK: %s (%d)\n", command_string_value, queue_rcv_value);
+				vTaskDelay(MQTT_TRANSACTION_WAIT_TIME / portTICK_RATE_MS);
 
-			msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic, command_string_value, 0, 0, 0);
+				msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic_status, command_string_value, 0, 0, 0);
+			}
+			else
+			{
+				command_string_value = translate_command_type(queue_rcv_value);
+				ESP_LOGI(TAG, "Received from Command Processor TASK: %s (%d)\n", command_string_value, queue_rcv_value);
+				vTaskDelay(MQTT_TRANSACTION_WAIT_TIME / portTICK_RATE_MS);
+
+				msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic, command_string_value, 0, 0, 0);
+			}
+
 			if (msg_id != -1)	{
 				ESP_LOGI(TAG, "Sent publish successful.\n");
 			}

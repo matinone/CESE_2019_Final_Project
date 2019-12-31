@@ -39,5 +39,17 @@ typedef enum {
 *-------------------------------------------------------------------*/
 void slave_sim_task(void *pvParameter);
 
+/*------------------------------------------------------------------
+|  Function: translate_slave_machine_state
+| ------------------------------------------------------------------
+|  Description:
+|
+|  Parameters:
+|       -
+|
+|  Returns:  char*
+*-------------------------------------------------------------------*/
+char* translate_slave_machine_state(slave_machine_state_t state);
+
 /* ===== Avoid multiple inclusion ===== */
 #endif // __SLAVE_SIM_TASK_H__

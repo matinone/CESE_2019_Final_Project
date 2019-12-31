@@ -25,7 +25,8 @@
 
 
 /* ===== Macros of private constants ===== */
-#define CMD_RX_CHECK_TIME_MS 500
+#define CMD_RX_CHECK_TIME_MS    500
+
 
 /* ===== Declaration of private or external variables ===== */
 QueueHandle_t queue_command_processor_rx;
@@ -64,9 +65,10 @@ int8_t initialize_command_processor(rx_module_t wifi_type)
 void command_processor_task(void *pvParameter)
 {   
     rx_command_t current_command;
-    BaseType_t xStatus;
+    rx_module_t original_rx_id;
     QueueHandle_t* generic_queue_handle_ptr;
     uint8_t master_serial_command;
+    BaseType_t xStatus;
 
     while (1)
     {
@@ -186,6 +188,7 @@ void command_processor_task(void *pvParameter)
 
                     break;
                 case CMD_SLAVE_STATUS:
+                    original_rx_id = current_command.rx_id;
                     // write to the I2C master queue
                     master_serial_command = current_command.command;
                     xStatus = xQueueSendToBack(queue_i2c_master, &master_serial_command, 500 / portTICK_RATE_MS);
@@ -197,6 +200,20 @@ void command_processor_task(void *pvParameter)
                     {
                         ESP_LOGI(TAG, "Slave FSM current state: %d", current_command.command);
                     }
+
+                    // send the state to the task that requested it
+                    generic_queue_handle_ptr = get_module_queue(original_rx_id);
+                    if (generic_queue_handle_ptr != NULL)
+                    {
+                        master_serial_command = SLAVE_STATE_FRAME;  // reusing this variable
+                        xStatus = xQueueSendToBack(*generic_queue_handle_ptr, &master_serial_command, 1000 / portTICK_RATE_MS);
+                        xStatus = xQueueSendToBack(*generic_queue_handle_ptr, &current_command.command, 1000 / portTICK_RATE_MS);
+                        // if (xStatus != pdPASS)
+                        // {
+                        //     printf("Could not send the data to the queue.\n");
+                        // }
+                    }
+
                     break;
                 default:
                     break;

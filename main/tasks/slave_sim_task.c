@@ -95,6 +95,24 @@ void slave_sim_task(void *pvParameter)
     }
 }
 
+char* translate_slave_machine_state(slave_machine_state_t state)
+{
+    switch(state)
+    {
+        case SLAVE_IDLE:
+            return "SLAVE_IDLE";
+        case SLAVE_PROCESS_A:
+            return "SLAVE_PROCESS_A";
+        case SLAVE_PROCESS_B:
+            return "SLAVE_PROCESS_B";
+        case SLAVE_PAUSE:
+            return "SLAVE_PAUSE";
+        case SLAVE_DONE:
+            return "SLAVE_DONE";
+        default:
+            return "UNKNOWN";
+    }
+}
 
 /* ===== Implementations of private functions ===== */
 esp_err_t initialize_i2c_slave(uint16_t slave_addr)
