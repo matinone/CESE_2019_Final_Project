@@ -69,7 +69,7 @@ void slave_sim_task(void *pvParameter)
         }
         else
         {
-            command_data = 0;
+            command_data = 255;
         }
 
         // ESP_LOGI(TAG, "Current SLAVE STATE: %d.\n", (uint8_t)slave_state);
