@@ -34,7 +34,8 @@ extern EventGroupHandle_t wifi_event_group;
 extern QueueHandle_t queue_command_processor_rx;
 
 static const int CONNECTED_BIT = BIT0;
-static const char *TAG = "HTTP_TASK";
+static const char *TAG_TX = "HTTP_TX_TASK";
+static const char *TAG_RX = "HTTP_RX_TASK";
 
 // queue to pass the IP resolution from wifi_tx_task to wifi_rx_cmd_task
 QueueHandle_t queue_wifi_tx_to_rx;
@@ -107,7 +108,7 @@ void wifi_tx_task(void *pvParameter)
 		// Read data from the queue
 		xStatus = xQueueReceive(queue_http_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)	{
-			ESP_LOGI(TAG, "Received from Command Processor TASK: %d\n", queue_rcv_value);
+			ESP_LOGI(TAG_TX, "Received from Command Processor TASK: %d\n", queue_rcv_value);
 			sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
 			
 			// create a new socket
@@ -178,7 +179,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 		// always wait for connection
 		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 
-		printf("\nChecking if there is any new command to execute.\n");
+		ESP_LOGI(TAG_RX, "Checking if there is any new command to execute.");
 
 		// create a new socket
 		socket_http = lwip_socket(res->ai_family, res->ai_socktype, 0);
@@ -188,7 +189,7 @@ void wifi_rx_cmd_task(void * pvParameter)
 			continue;
 		}
 		
-		printf("Receiving HTTP response.\n");
+		// printf("Receiving HTTP response.\n");
 		int32_t flag_rsp_ok;
 		content_buf[0] = '\0';
 		flag_rsp_ok = receive_http_response(socket_http, recv_buf, content_buf, RX_BUFFER_SIZE);
@@ -197,12 +198,12 @@ void wifi_rx_cmd_task(void * pvParameter)
 		lwip_close_r(socket_http);
 
 		if (flag_rsp_ok == 1)	{
-			printf("HTTP response status OK.\n");
+			// printf("HTTP response status OK.\n");
 			// printf("Response Content: %s\n", content_buf);
 
 			pch = strstr(content_buf, "CMD_");
 			if (pch != NULL)	{
-				printf("Received new command: %s\n", content_buf);
+				ESP_LOGI(TAG_RX, "Received new command:\n%s", content_buf);
 				
 				http_command.command = str_to_cmd(content_buf);
 				xStatus = xQueueSendToBack(queue_command_processor_rx, &http_command, 1000 / portTICK_RATE_MS);
@@ -211,11 +212,11 @@ void wifi_rx_cmd_task(void * pvParameter)
 	            }
 			}
 			else	{
-				printf("No new commands.\n");
+				ESP_LOGI(TAG_RX, "No new commands.");
 			}
 		}
 		else	{
-			printf("HTTP response status NOT OK.\n");
+			ESP_LOGE(TAG_RX, "HTTP response status NOT OK.");
 		}
 		vTaskDelay(COMMAND_RX_CHECK_PERIOD / portTICK_RATE_MS);
 	}

@@ -84,7 +84,7 @@ void i2c_master_task(void *pvParameter)
         if (xStatus == pdPASS)
         {
             ack_command.command = CMD_SLAVE_FAIL;
-            ESP_LOGI(TAG, "Received %d from Command Processor, sending it to slave\n", command_received);
+            ESP_LOGI(TAG, "Received %d from Command Processor, sending it to slave", command_received);
             data_to_slave[1] = command_received;
             ret = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_FRAME_LENGTH);
             if(ret == ESP_OK)
@@ -107,13 +107,13 @@ void i2c_master_task(void *pvParameter)
             xStatus = xQueueSendToBack(queue_command_processor_rx, &ack_command, 100 / portTICK_RATE_MS);
             if (xStatus != pdPASS)
             {
-                ESP_LOGI(TAG, "Could not send ACK back to the Command Processor.\n");
+                ESP_LOGE(TAG, "Could not send ACK back to the Command Processor.");
             }
 
             // read the slave FSM status
             if(command_received == CMD_SLAVE_STATUS)
             {
-                ESP_LOGI(TAG, "Reading Slave status.\n");
+                ESP_LOGI(TAG, "Reading Slave status.");
                 ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_FRAME_LENGTH);
                 if (ret == ESP_OK && check_frame_format(data_from_slave))
                 {
@@ -121,7 +121,7 @@ void i2c_master_task(void *pvParameter)
                     xStatus = xQueueSendToBack(queue_command_processor_rx, &ack_command, 100 / portTICK_RATE_MS);
                     if (xStatus != pdPASS)
                     {
-                        ESP_LOGI(TAG, "Could not send Slave FSM state to the Command Processor.\n");
+                        ESP_LOGE(TAG, "Could not send Slave FSM state to the Command Processor.");
                     }
                 }
             }
@@ -132,7 +132,7 @@ void i2c_master_task(void *pvParameter)
         ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_FRAME_LENGTH);
         if (ret == ESP_OK && check_frame_format(data_from_slave))
         {
-            ESP_LOGI(TAG, "Received (%d) from slave\n", data_from_slave[1]);
+            ESP_LOGI(TAG, "Received (%d) from slave", data_from_slave[1]);
         }
 
         vTaskDelay(1000 / portTICK_RATE_MS);

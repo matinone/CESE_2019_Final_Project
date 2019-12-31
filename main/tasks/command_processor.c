@@ -75,7 +75,7 @@ void command_processor_task(void *pvParameter)
         xStatus = xQueueReceive(queue_command_processor_rx, &current_command,  portMAX_DELAY);
         if (xStatus == pdPASS) 
         {
-            printf("Received command %s from %s.\n", translate_command_type(current_command.command), 
+            ESP_LOGI(TAG, "Received command %s from %s.\n", translate_command_type(current_command.command),
                                                      translate_rx_module(current_command.rx_id));
 
             // do something here depending on the received command
@@ -196,7 +196,7 @@ void command_processor_task(void *pvParameter)
                     xStatus = xQueueReceive(queue_command_processor_rx, &current_command, 500 / portTICK_RATE_MS);
                     if(xStatus == pdPASS && current_command.rx_id == I2C_MASTER_MOD)
                     {
-                        ESP_LOGI(TAG, "Slave FSM current state: %d\n", current_command.command);
+                        ESP_LOGI(TAG, "Slave FSM current state: %d", current_command.command);
                     }
                     break;
                 default:

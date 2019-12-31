@@ -25,7 +25,7 @@
 /* ===== Implementations of public functions ===== */
 int send_http_request(int socket_handler, struct addrinfo* res, char* http_request)
 {
-	printf("Sending HTTP request.\n");
+	// printf("Sending HTTP request.\n");
 
 	if(socket_handler < 0) {
 		printf("Unable to allocate a new socket, not sending to ThingSpeak the received data.\n");
@@ -58,7 +58,7 @@ int send_http_request(int socket_handler, struct addrinfo* res, char* http_reque
 		return -1;
 	}
 	// printf("HTTP request sent:  %s\n", http_request);
-	printf("HTTP request sent.\n");
+	// printf("HTTP request sent.\n");
 
 	return 0;
 }

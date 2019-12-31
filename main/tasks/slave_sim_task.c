@@ -19,11 +19,12 @@
 #define I2C_SLAVE_NUM           I2C_NUM_0
 #define I2C_SLAVE_TX_BUF_LEN    1024
 #define I2C_SLAVE_RX_BUF_LEN    1024
-#define SLAVE_PROCESS_A_TIME    20
-#define SLAVE_PROCESS_B_TIME    10
+#define SLAVE_PROCESS_A_TIME    30
+#define SLAVE_PROCESS_B_TIME    15
 
 /* ===== Declaration of private or external variables ===== */
-static const char *TAG = "I2C_SLAVE_SIM_TASK";
+static const char *TAG_TASK = "I2C_SLAVE_SIM_TASK";
+static const char *TAG_FSM  = "I2C_SLAVE_FSM";
 static slave_machine_state_t slave_state;
 
 /* ===== Prototypes of private functions ===== */
@@ -49,7 +50,7 @@ void slave_sim_task(void *pvParameter)
     error_state = initialize_i2c_slave(I2C_ESP_SLAVE_ADDR);
     if (error_state != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error initializing I2C slave.");
+        ESP_LOGE(TAG_TASK, "Error initializing I2C slave.");
         // do something about this
     }
 
@@ -59,7 +60,7 @@ void slave_sim_task(void *pvParameter)
         slave_read_buffer_size = i2c_slave_read_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_FRAME_LENGTH, 100 / portTICK_RATE_MS);
         if (slave_read_buffer_size > 0 && check_frame_format(command_frame))
         {
-            // ESP_LOGI(TAG, "I2C Slave Sim Task read from slave buffer: %d\n", command_frame[1]);
+            // ESP_LOGI(TAG_TASK, "I2C Slave Sim Task read from slave buffer: %d", command_frame[1]);
             command_data = command_frame[1];
 
             // send back to the master a message indicating that the command was correctly received
@@ -75,7 +76,7 @@ void slave_sim_task(void *pvParameter)
             command_data = 255;
         }
 
-        // ESP_LOGI(TAG, "Current SLAVE STATE: %d.\n", (uint8_t)slave_state);
+        // ESP_LOGI(TAG_TASK, "Current SLAVE STATE: %d.", (uint8_t)slave_state);
 
         slave_state = update_slave_sim_fsm(slave_state, command_data);
 
@@ -128,13 +129,13 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
     case SLAVE_IDLE:
         if(current_cmd == CMD_SLAVE_START_A)
         {
-            ESP_LOGI(TAG, "Slave IDLE received command A, switching to SLAVE_PROCESS_A.\n");
+            ESP_LOGI(TAG_FSM, "Slave IDLE received command A, switching to SLAVE_PROCESS_A.");
             current_state = SLAVE_PROCESS_A;
             state_time_counter = 0;
         }
         else if(current_cmd == CMD_SLAVE_START_B)
         {
-            ESP_LOGI(TAG, "Slave IDLE received command B, switching to SLAVE_PROCESS_B.\n");
+            ESP_LOGI(TAG_FSM, "Slave IDLE received command B, switching to SLAVE_PROCESS_B.");
             current_state = SLAVE_PROCESS_B;
             state_time_counter = 0;
         }
@@ -143,12 +144,12 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
     case SLAVE_PROCESS_A:
         if(state_time_counter == 0)
         {
-            ESP_LOGI(TAG, "Entered into SLAVE_PROCESS_A.\n");
+            ESP_LOGI(TAG_FSM, "Entered into SLAVE_PROCESS_A.");
         }
         state_time_counter++;
         if(state_time_counter == SLAVE_PROCESS_A_TIME)
         {
-            ESP_LOGI(TAG, "Slave PROCESS_A finished, switching to SLAVE_DONE.\n");
+            ESP_LOGI(TAG_FSM, "Slave PROCESS_A finished, switching to SLAVE_DONE.");
             current_state = SLAVE_DONE;
 
             // notify master that the process finished
@@ -161,13 +162,13 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
         }
         else if(current_cmd == CMD_SLAVE_PAUSE)
         {
-            ESP_LOGI(TAG, "Slave PROCESS_A received command P, switching to SLAVE_PAUSE.\n");
+            ESP_LOGI(TAG_FSM, "Slave PROCESS_A received command P, switching to SLAVE_PAUSE.");
             paused_state = current_state;
             current_state = SLAVE_PAUSE;
         }
         else if(current_cmd == CMD_SLAVE_RESET)
         {
-            ESP_LOGI(TAG, "Slave PROCESS_A received command R, switching to SLAVE_IDLE.\n");
+            ESP_LOGI(TAG_FSM, "Slave PROCESS_A received command R, switching to SLAVE_IDLE.");
             current_state = SLAVE_IDLE;
         }
 
@@ -175,12 +176,12 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
     case SLAVE_PROCESS_B:
         if(state_time_counter == 0)
         {
-            ESP_LOGI(TAG, "Entered into SLAVE_PROCESS_B.\n");
+            ESP_LOGI(TAG_FSM, "Entered into SLAVE_PROCESS_B.");
         }
         state_time_counter++;
         if(state_time_counter == SLAVE_PROCESS_B_TIME)
         {
-            ESP_LOGI(TAG, "Slave PROCESS_B finished, switching to SLAVE_DONE.\n");
+            ESP_LOGI(TAG_FSM, "Slave PROCESS_B finished, switching to SLAVE_DONE.");
             current_state = SLAVE_DONE;
 
             // notify master that the process finished
@@ -193,13 +194,13 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
         }
         else if(current_cmd == CMD_SLAVE_PAUSE)
         {
-            ESP_LOGI(TAG, "Slave PROCESS_B received command P, switching to SLAVE_PAUSE.\n");
+            ESP_LOGI(TAG_FSM, "Slave PROCESS_B received command P, switching to SLAVE_PAUSE.");
             paused_state = current_state;
             current_state = SLAVE_PAUSE;
         }
         else if(current_cmd == CMD_SLAVE_RESET)
         {
-            ESP_LOGI(TAG, "Slave PROCESS_B received command R, switching to SLAVE_IDLE.\n");
+            ESP_LOGI(TAG_FSM, "Slave PROCESS_B received command R, switching to SLAVE_IDLE.");
             current_state = SLAVE_IDLE;
         }
 
@@ -207,19 +208,19 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
     case SLAVE_PAUSE:
         if(current_cmd == CMD_SLAVE_CONTINUE)
         {
-            ESP_LOGI(TAG, "Slave PAUSE received command C, switching to previous paused state.\n");
+            ESP_LOGI(TAG_FSM, "Slave PAUSE received command C, switching to previous paused state.");
             current_state = paused_state;
         }
         else if(current_cmd == CMD_SLAVE_RESET)
         {
-            ESP_LOGI(TAG, "Slave PAUSE received command R, switching to SLAVE_IDLE.\n");
+            ESP_LOGI(TAG_FSM, "Slave PAUSE received command R, switching to SLAVE_IDLE.");
             current_state = SLAVE_IDLE;
         }
 
         break;
 
     case SLAVE_DONE:
-        ESP_LOGI(TAG, "Slave DONE, switching to SLAVE_IDLE.\n");
+        ESP_LOGI(TAG_FSM, "Slave DONE, switching to SLAVE_IDLE.");
         current_state = SLAVE_IDLE;
 
         break;
