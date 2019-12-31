@@ -30,11 +30,14 @@
 	#define MQTT_PASSWORD 					"FP650XEYQ5XX0NY7"
 	#define BINARY_CERTIFICATE_START 		"_binary_thingspeak_mqtts_certificate_pem_start"
 	#define BINARY_CERTIFICATE_END 			"_binary_thingspeak_mqtts_certificate_pem_end"
+	// ThingSpeak free cloud requires some time between transactions (15 seconds)
+	#define MQTT_TRANSACTION_WAIT_TIME		15000
 #else
+	#define MQTT_TRANSACTION_WAIT_TIME		1000
 	#ifdef CONFIG_ADAFRUIT
 		#define CONFIG_BROKER_URI 			"mqtts://io.adafruit.com:8883"
-		#define MQTT_PUBLISH_TOPIC 			"mbrignone/feeds/test-example"
-		#define MQTT_SUBSCRIBE_TOPIC 		"mbrignone/feeds/test-example"
+		#define MQTT_PUBLISH_TOPIC 			"mbrignone/feeds/command-received"
+		#define MQTT_SUBSCRIBE_TOPIC 		"mbrignone/feeds/command-sent"
 		#define MQTT_USERNAME 				"mbrignone"
 		#define MQTT_PASSWORD 				"01d6fd13e8af4ed3b30f580e945f5561"
 		#define BINARY_CERTIFICATE_START 	"_binary_adafruit_mqtts_certificate_pem_start"
@@ -47,8 +50,8 @@
 extern EventGroupHandle_t wifi_event_group;
 extern QueueHandle_t queue_command_processor_rx;
 
-extern const uint8_t thingspeak_mqtts_cert_start[] asm(BINARY_CERTIFICATE_START);
-extern const uint8_t thingspeak_mqtts_cert_end[]   asm(BINARY_CERTIFICATE_END);
+extern const uint8_t mqtts_cert_start[] asm(BINARY_CERTIFICATE_START);
+extern const uint8_t mqtts_cert_end[]   asm(BINARY_CERTIFICATE_END);
 static const char *TAG = "MQTTS_TASK";
 static char* mqtt_publish_topic = MQTT_PUBLISH_TOPIC;
 static char* mqtt_subscribe_topic = MQTT_SUBSCRIBE_TOPIC;
@@ -83,13 +86,14 @@ void mqtt_publish_task(void *pvParameter)
 
 	int msg_id;
 	uint8_t queue_rcv_value;
-	char str_number[3];
+	// char str_number[3];
+	char* command_string_value;
 	BaseType_t xStatus;
 
 	const esp_mqtt_client_config_t mqtt_cfg = {
 		.uri = CONFIG_BROKER_URI,
 		.event_handle = mqtt_event_handler,
-		.cert_pem = (const char *)thingspeak_mqtts_cert_start,
+		.cert_pem = (const char *)mqtts_cert_start,
 		.username = MQTT_USERNAME,
 		.password = MQTT_PASSWORD,
 		.disable_clean_session = 0,
@@ -107,11 +111,11 @@ void mqtt_publish_task(void *pvParameter)
 		// read data from the queue
 		xStatus = xQueueReceive(queue_mqtt_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)	{
-			ESP_LOGI(TAG, "Received from Command Processor TASK: %d\n", queue_rcv_value);
-			sprintf(str_number, "%d", queue_rcv_value);
-			// ThingSpeak free cloud requires some time between transactions (15 seconds)
-			vTaskDelay(15000 / portTICK_RATE_MS);
-			msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic, str_number, 0, 0, 0);
+			command_string_value = translate_command_type(queue_rcv_value);
+			ESP_LOGI(TAG, "Received from Command Processor TASK: %s (%d)\n", command_string_value, queue_rcv_value);
+			vTaskDelay(MQTT_TRANSACTION_WAIT_TIME / portTICK_RATE_MS);
+
+			msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic, command_string_value, 0, 0, 0);
 			if (msg_id != -1)	{
 				ESP_LOGI(TAG, "Sent publish successful.\n");
 			}
@@ -145,7 +149,7 @@ void mqtt_rx_task(void *pvParameter)
 			printf("TOPIC = %.*s\r\n", mqtt_data_received.topic_len, mqtt_data_received.topic);
 			printf("DATA = %.*s\r\n", mqtt_data_received.data_len, mqtt_data_received.data);
 
-			mqtt_command.command = atoi(mqtt_data_received.data);
+			mqtt_command.command = str_to_cmd(mqtt_data_received.data);
 			xStatus = xQueueSendToBack(queue_command_processor_rx, &mqtt_command, 1000 / portTICK_RATE_MS);
             if (xStatus != pdPASS)	{
                 printf("Could not send the data to the queue.\n");
