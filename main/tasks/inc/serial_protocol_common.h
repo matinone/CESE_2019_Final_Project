@@ -20,17 +20,9 @@
 #define I2C_SLAVE_SDA_IO    25 	        // gpio for I2c slave data (SDA)
 #define I2C_ESP_SLAVE_ADDR  0x28
 
-#define COMMAND_START       's'
-#define COMMAND_END         'e'
-#define COMMAND_LENGTH      3
-
-#define COMMAND_START_A     'A'
-#define COMMAND_START_B     'B'
-#define COMMAND_PAUSE       'P'
-#define COMMAND_CONTINUE    'C'
-#define COMMAND_RESET       'R'
-
-#define COMMAND_OK          'K'
+#define COMMAND_FRAME_START       's'
+#define COMMAND_FRAME_END         'e'
+#define COMMAND_FRAME_LENGTH      3
 
 /* ===== Public structs and enums ===== */
 

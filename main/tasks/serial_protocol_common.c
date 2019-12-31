@@ -19,7 +19,7 @@
 /* ===== Implementations of public functions ===== */
 uint8_t check_frame_format(uint8_t* frame)
 {
-    return (frame[0] == COMMAND_START && frame[COMMAND_LENGTH-1] == COMMAND_END);
+    return (frame[0] == COMMAND_FRAME_START && frame[COMMAND_FRAME_LENGTH-1] == COMMAND_FRAME_END);
 }
 
 /* ===== Implementations of private functions ===== */

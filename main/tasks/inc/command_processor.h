@@ -59,16 +59,18 @@ typedef enum {
 |       CMD_INVALID - invalid command
 *-------------------------------------------------------------------*/
 typedef enum {
-    CMD_START,
-    CMD_STOP,
-    CMD_STATUS,
-    CMD_RESTART,
+    CMD_SLAVE_START_A,
+    CMD_SLAVE_START_B,
+    CMD_SLAVE_PAUSE,
+    CMD_SLAVE_CONTINUE,
+    CMD_SLAVE_RESET,
+    CMD_SLAVE_STATUS,
+    CMD_SLAVE_OK,
+    CMD_SLAVE_FAIL,
     CMD_WIFI,
     CMD_BLE,
     CMD_ECHO,
     CMD_INVALID,
-    CMD_OK,
-    CMD_FAIL,
 }   command_type_t;
 
 /*------------------------------------------------------------------

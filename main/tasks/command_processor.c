@@ -80,7 +80,7 @@ void command_processor_task(void *pvParameter)
             // do something here depending on the received command
             switch(current_command.command)
             {
-                case CMD_STATUS: ;
+                case CMD_SLAVE_STATUS: ;
                     char* nvs_ssid_value = get_nvs_string_value(WIFI_SSID_NVS_KEY);
                     char* nvs_password_value = get_nvs_string_value(WIFI_PASSWORD_NVS_KEY);
 
@@ -173,14 +173,14 @@ void command_processor_task(void *pvParameter)
                         printf("There is no queue handle match for module %s.\n", translate_rx_module(current_command.rx_id));
                     }
                     break;
-                case CMD_START:
+                case CMD_SLAVE_START_A:
                     // write to the I2C master queue
-                    master_serial_command = COMMAND_START_A;
+                    master_serial_command = CMD_SLAVE_START_A;
                     xStatus = xQueueSendToBack(queue_i2c_master, &master_serial_command, 500 / portTICK_RATE_MS);
 
                     // wait for ack from the master module
                     xStatus = xQueueReceive(queue_command_processor_rx, &current_command,  2000 / portTICK_RATE_MS);
-                    if (xStatus == pdPASS && current_command.rx_id == I2C_MASTER_MOD && current_command.command == CMD_OK)
+                    if (xStatus == pdPASS && current_command.rx_id == I2C_MASTER_MOD && current_command.command == CMD_SLAVE_OK)
                     {
                         ESP_LOGI(TAG, "Command successfully sent to Slave\n");
                     }
@@ -191,7 +191,7 @@ void command_processor_task(void *pvParameter)
 
 
                     break;
-                case CMD_STOP:
+                case CMD_SLAVE_PAUSE:
                     // write to the I2C master queue
 
                     break;
@@ -207,14 +207,12 @@ void command_processor_task(void *pvParameter)
 
 command_type_t str_to_cmd(char* str_command)
 {
-    if (strstr(str_command, "CMD_START") != NULL)
-        return CMD_START;
-    if (strstr(str_command, "CMD_STOP") != NULL)
-        return CMD_STOP;
-    if (strstr(str_command, "CMD_STATUS") != NULL)
-        return CMD_STATUS;
-    if (strstr(str_command, "CMD_RESTART") != NULL)
-        return CMD_RESTART;
+    if (strstr(str_command, "CMD_SLAVE_START_A") != NULL)
+        return CMD_SLAVE_START_A;
+    if (strstr(str_command, "CMD_SLAVE_PAUSE") != NULL)
+        return CMD_SLAVE_PAUSE;
+    if (strstr(str_command, "CMD_SLAVE_STATUS") != NULL)
+        return CMD_SLAVE_STATUS;
     if (strstr(str_command, "CMD_WIFI") != NULL)
         return CMD_WIFI;
     if (strstr(str_command, "CMD_BLE") != NULL)
@@ -251,14 +249,16 @@ char* translate_command_type(command_type_t command)
 {
     switch(command)
     {
-        case CMD_START:
-            return "CMD_START";
-        case CMD_STOP:
-            return "CMD_STOP";
-        case CMD_STATUS:
-            return "CMD_STATUS";
-        case CMD_RESTART:
-            return "CMD_RESTART";
+        case CMD_SLAVE_START_A:
+            return "CMD_SLAVE_START_A";
+        case CMD_SLAVE_PAUSE:
+            return "CMD_SLAVE_PAUSE";
+        case CMD_SLAVE_STATUS:
+            return "CMD_SLAVE_STATUS";
+        case CMD_SLAVE_OK:
+            return "CMD_SLAVE_OK";
+        case CMD_SLAVE_FAIL:
+            return "CMD_SLAVE_FAIL";
         case CMD_WIFI:
             return "CMD_WIFI";
         case CMD_BLE:
@@ -267,10 +267,6 @@ char* translate_command_type(command_type_t command)
             return "CMD_ECHO";
         case CMD_INVALID:
             return "CMD_INVALID";
-        case CMD_OK:
-            return "CMD_OK";
-        case CMD_FAIL:
-            return "CMD_FAIL";
         default:
             return "UNKNOWN";
     }

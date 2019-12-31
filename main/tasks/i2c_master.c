@@ -65,8 +65,8 @@ esp_err_t initialize_i2c_master()
 void i2c_master_task(void *pvParameter)
 {
     int ret;
-    uint8_t data_to_slave[COMMAND_LENGTH];
-    uint8_t data_from_slave[COMMAND_LENGTH];
+    uint8_t data_to_slave[COMMAND_FRAME_LENGTH];
+    uint8_t data_from_slave[COMMAND_FRAME_LENGTH];
     uint8_t command_received;
     BaseType_t xStatus;
 
@@ -74,8 +74,8 @@ void i2c_master_task(void *pvParameter)
     ack_command.rx_id = I2C_MASTER_MOD;
 
 
-    data_to_slave[0] = COMMAND_START;
-    data_to_slave[2] = COMMAND_END;
+    data_to_slave[0] = COMMAND_FRAME_START;
+    data_to_slave[2] = COMMAND_FRAME_END;
 
     while (1)   
     {
@@ -83,20 +83,20 @@ void i2c_master_task(void *pvParameter)
         xStatus = xQueueReceive(queue_i2c_master, &command_received, 500 / portTICK_RATE_MS);
         if (xStatus == pdPASS)
         {
-            ack_command.command = CMD_FAIL;
+            ack_command.command = CMD_SLAVE_FAIL;
             ESP_LOGI(TAG, "Received %d from Command Processor, sending it to slave\n", command_received);
             data_to_slave[1] = command_received;
-            ret = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_LENGTH);
+            ret = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_FRAME_LENGTH);
             if(ret == ESP_OK)
             {
                 // read ack from the slave
-                ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_LENGTH);
+                ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_FRAME_LENGTH);
                 if (ret == ESP_OK && check_frame_format(data_from_slave))
                 {
-                    if(data_from_slave[1] == COMMAND_OK)
+                    if(data_from_slave[1] == CMD_SLAVE_OK)
                     {
                         // ESP_LOGI(TAG, "Received ACK from slave for command %d\n", command_received);
-                        ack_command.command = CMD_OK;
+                        ack_command.command = CMD_SLAVE_OK;
                     }
                 }
             }
@@ -111,8 +111,8 @@ void i2c_master_task(void *pvParameter)
         }
 
         // read data from the slave
-        memset(data_from_slave, 0, COMMAND_LENGTH); // clear the rx buffer
-        ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_LENGTH);
+        memset(data_from_slave, 0, COMMAND_FRAME_LENGTH); // clear the rx buffer
+        ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_FRAME_LENGTH);
         if (ret == ESP_OK && check_frame_format(data_from_slave))
         {
             ESP_LOGI(TAG, "Received %c from slave\n", data_from_slave[1]);

@@ -10,6 +10,7 @@
 /* ===== Dependencies ===== */
 #include "slave_sim_task.h"
 #include "serial_protocol_common.h"
+#include "command_processor.h"
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
@@ -32,7 +33,7 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
 /* ===== Implementations of public functions ===== */
 void slave_sim_task(void *pvParameter)
 {
-    uint8_t command_frame[COMMAND_LENGTH];
+    uint8_t command_frame[COMMAND_FRAME_LENGTH];
     uint8_t command_data;
     size_t sent_size;
     int32_t slave_read_buffer_size;
@@ -52,15 +53,15 @@ void slave_sim_task(void *pvParameter)
     while (1)
     {
         // read data from slave buffer
-        slave_read_buffer_size = i2c_slave_read_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 250 / portTICK_RATE_MS);
+        slave_read_buffer_size = i2c_slave_read_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_FRAME_LENGTH, 250 / portTICK_RATE_MS);
         if (slave_read_buffer_size > 0 && check_frame_format(command_frame))
         {
             // ESP_LOGI(TAG, "I2C Slave Sim Task read from slave buffer: %d\n", command_frame[1]);
             command_data = command_frame[1];
 
             // send back to the master a message indicating that the command was correctly received
-            command_frame[1] = COMMAND_OK;
-            sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
+            command_frame[1] = CMD_SLAVE_OK;
+            sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_FRAME_LENGTH, 500 / portTICK_RATE_MS);
             if (sent_size == 0)
             {
                 printf("I2C slave buffer is full, slave UNABLE to write master\n");
@@ -105,19 +106,19 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
 {
     static uint8_t state_time_counter           = 0;
     static slave_machine_state_t paused_state   = SLAVE_IDLE;
-    uint8_t command_frame[COMMAND_LENGTH]       = {COMMAND_START, 0, COMMAND_END};
+    uint8_t command_frame[COMMAND_FRAME_LENGTH] = {COMMAND_FRAME_START, 0, COMMAND_FRAME_END};
     size_t sent_size;
 
     switch (current_state)
     {
     case SLAVE_IDLE:
-        if(current_cmd == COMMAND_START_A)
+        if(current_cmd == CMD_SLAVE_START_A)
         {
             ESP_LOGI(TAG, "Slave IDLE received command A, switching to SLAVE_PROCESS_A.\n");
             current_state = SLAVE_PROCESS_A;
             state_time_counter = 0;
         }
-        else if(current_cmd == COMMAND_START_B)
+        else if(current_cmd == CMD_SLAVE_START_B)
         {
             ESP_LOGI(TAG, "Slave IDLE received command B, switching to SLAVE_PROCESS_B.\n");
             current_state = SLAVE_PROCESS_B;
@@ -137,20 +138,20 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
             current_state = SLAVE_DONE;
 
             // notify master that the process finished
-            command_frame[1] = COMMAND_START_A;
-            sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
+            command_frame[1] = CMD_SLAVE_START_A;
+            sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_FRAME_LENGTH, 500 / portTICK_RATE_MS);
             if (sent_size == 0)
             {
                 printf("I2C slave buffer is full, slave UNABLE to write master\n");
             }
         }
-        else if(current_cmd == COMMAND_PAUSE)
+        else if(current_cmd == CMD_SLAVE_PAUSE)
         {
             ESP_LOGI(TAG, "Slave PROCESS_A received command P, switching to SLAVE_PAUSE.\n");
             paused_state = current_state;
             current_state = SLAVE_PAUSE;
         }
-        else if(current_cmd == COMMAND_RESET)
+        else if(current_cmd == CMD_SLAVE_RESET)
         {
             ESP_LOGI(TAG, "Slave PROCESS_A received command R, switching to SLAVE_IDLE.\n");
             current_state = SLAVE_IDLE;
@@ -169,20 +170,20 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
             current_state = SLAVE_DONE;
 
             // notify master that the process finished
-            command_frame[1] = COMMAND_START_A;
-            sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_LENGTH, 500 / portTICK_RATE_MS);
+            command_frame[1] = CMD_SLAVE_START_B;
+            sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_FRAME_LENGTH, 500 / portTICK_RATE_MS);
             if (sent_size == 0)
             {
                 printf("I2C slave buffer is full, slave UNABLE to write master\n");
             }
         }
-        else if(current_cmd == COMMAND_PAUSE)
+        else if(current_cmd == CMD_SLAVE_PAUSE)
         {
             ESP_LOGI(TAG, "Slave PROCESS_B received command P, switching to SLAVE_PAUSE.\n");
             paused_state = current_state;
             current_state = SLAVE_PAUSE;
         }
-        else if(current_cmd == COMMAND_RESET)
+        else if(current_cmd == CMD_SLAVE_RESET)
         {
             ESP_LOGI(TAG, "Slave PROCESS_B received command R, switching to SLAVE_IDLE.\n");
             current_state = SLAVE_IDLE;
@@ -190,12 +191,12 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
 
         break;
     case SLAVE_PAUSE:
-        if(current_cmd == COMMAND_CONTINUE)
+        if(current_cmd == CMD_SLAVE_CONTINUE)
         {
             ESP_LOGI(TAG, "Slave PAUSE received command C, switching to previous paused state.\n");
             current_state = paused_state;
         }
-        else if(current_cmd == COMMAND_RESET)
+        else if(current_cmd == CMD_SLAVE_RESET)
         {
             ESP_LOGI(TAG, "Slave PAUSE received command R, switching to SLAVE_IDLE.\n");
             current_state = SLAVE_IDLE;
