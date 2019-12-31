@@ -89,6 +89,8 @@ void i2c_master_task(void *pvParameter)
             ret = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_FRAME_LENGTH);
             if(ret == ESP_OK)
             {
+                // wait to make sure that the slave response is ready
+                vTaskDelay(100 / portTICK_RATE_MS);
                 // read ack from the slave
                 ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_FRAME_LENGTH);
                 if (ret == ESP_OK && check_frame_format(data_from_slave))
@@ -108,6 +110,21 @@ void i2c_master_task(void *pvParameter)
                 ESP_LOGI(TAG, "Could not send ACK back to the Command Processor.\n");
             }
 
+            // read the slave FSM status
+            if(command_received == CMD_SLAVE_STATUS)
+            {
+                ESP_LOGI(TAG, "Reading Slave status.\n");
+                ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_FRAME_LENGTH);
+                if (ret == ESP_OK && check_frame_format(data_from_slave))
+                {
+                    ack_command.command = data_from_slave[1];
+                    xStatus = xQueueSendToBack(queue_command_processor_rx, &ack_command, 100 / portTICK_RATE_MS);
+                    if (xStatus != pdPASS)
+                    {
+                        ESP_LOGI(TAG, "Could not send Slave FSM state to the Command Processor.\n");
+                    }
+                }
+            }
         }
 
         // read data from the slave

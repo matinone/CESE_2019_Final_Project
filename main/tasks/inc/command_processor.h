@@ -70,6 +70,7 @@ typedef enum {
     CMD_WIFI,
     CMD_BLE,
     CMD_ECHO,
+    CMD_DUMMY,
     CMD_INVALID,
 }   command_type_t;
 

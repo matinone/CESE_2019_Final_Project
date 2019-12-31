@@ -81,7 +81,7 @@ void command_processor_task(void *pvParameter)
             // do something here depending on the received command
             switch(current_command.command)
             {
-                case CMD_SLAVE_STATUS: ;
+                case CMD_DUMMY: ;
                     char* nvs_ssid_value = get_nvs_string_value(WIFI_SSID_NVS_KEY);
                     char* nvs_password_value = get_nvs_string_value(WIFI_PASSWORD_NVS_KEY);
 
@@ -186,7 +186,19 @@ void command_processor_task(void *pvParameter)
                     xStatus = wait_for_slave_cmd_ack(&current_command);
 
                     break;
+                case CMD_SLAVE_STATUS:
+                    // write to the I2C master queue
+                    master_serial_command = current_command.command;
+                    xStatus = xQueueSendToBack(queue_i2c_master, &master_serial_command, 500 / portTICK_RATE_MS);
+                    xStatus = wait_for_slave_cmd_ack(&current_command);
 
+                    // read slave FSM state
+                    xStatus = xQueueReceive(queue_command_processor_rx, &current_command, 500 / portTICK_RATE_MS);
+                    if(xStatus == pdPASS && current_command.rx_id == I2C_MASTER_MOD)
+                    {
+                        ESP_LOGI(TAG, "Slave FSM current state: %d\n", current_command.command);
+                    }
+                    break;
                 default:
                     break;
             }
@@ -305,7 +317,7 @@ BaseType_t wait_for_slave_cmd_ack(rx_command_t* command)
     }
     else
     {
-        ESP_LOGI(TAG, "Command could not be sent to Slave\n");
+        ESP_LOGI(TAG, "Command could not be sent to Slave (%d)\n", command->command);
     }
 
     return xStatus;
