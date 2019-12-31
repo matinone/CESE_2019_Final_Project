@@ -145,6 +145,18 @@ void command_processor_task(void *pvParameter);
 *-------------------------------------------------------------------*/
 command_type_t str_to_cmd(char* str_command);
 
+/*------------------------------------------------------------------
+|  Function: translate_command_type
+| ------------------------------------------------------------------
+|  Description:
+|
+|  Parameters:
+|       -
+|
+|  Returns:  char*
+*-------------------------------------------------------------------*/
+char* translate_command_type(command_type_t command);
+
 
 /* ===== Avoid multiple inclusion ===== */
 #endif // __COMMAND_PROCESSOR_H__

@@ -42,7 +42,6 @@ static const char* TAG = "COMMAND_PROCESSOR_TASK";
 
 /* ===== Prototypes of private functions ===== */
 char* translate_rx_module(rx_module_t module);
-char* translate_command_type(command_type_t command);
 QueueHandle_t* get_module_queue(rx_module_t module);
 BaseType_t wait_for_slave_cmd_ack(rx_command_t* command);
 
@@ -233,28 +232,6 @@ command_type_t str_to_cmd(char* str_command)
     return CMD_INVALID;
 }
 
-/* ===== Implementations of private functions ===== */
-char* translate_rx_module(rx_module_t module)
-{
-    switch(module)
-    {
-        case HTTP_RX:
-            return "HTTP_RX";
-        case HTTPS_RX:
-            return "HTTPS_RX";
-        case MQTT_RX:
-            return "MQTT_RX";
-        case BLE_SERVER:
-            return "BLE_SERVER";
-        case UART_RX:
-            return "UART_RX";
-        case I2C_MASTER_MOD:
-            return "I2C_MASTER";
-        default:
-            return "UNKNOWN";
-    }
-}
-
 char* translate_command_type(command_type_t command)
 {
     switch(command)
@@ -283,6 +260,28 @@ char* translate_command_type(command_type_t command)
             return "CMD_ECHO";
         case CMD_INVALID:
             return "CMD_INVALID";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+/* ===== Implementations of private functions ===== */
+char* translate_rx_module(rx_module_t module)
+{
+    switch(module)
+    {
+        case HTTP_RX:
+            return "HTTP_RX";
+        case HTTPS_RX:
+            return "HTTPS_RX";
+        case MQTT_RX:
+            return "MQTT_RX";
+        case BLE_SERVER:
+            return "BLE_SERVER";
+        case UART_RX:
+            return "UART_RX";
+        case I2C_MASTER_MOD:
+            return "I2C_MASTER";
         default:
             return "UNKNOWN";
     }
