@@ -49,6 +49,11 @@
 	#endif
 #endif
 
+typedef enum {
+	CLIENT_TYPE_ADAFRUIT,
+	CLIENT_TYPE_GCLOUD,
+}	client_type_t;
+
 
 /* ===== Declaration of private or external variables ===== */
 extern EventGroupHandle_t wifi_event_group;
@@ -61,14 +66,16 @@ static char* mqtt_publish_topic 		= MQTT_PUBLISH_TOPIC_TX;
 static char* mqtt_publish_topic_status 	= MQTT_PUBLISH_TOPIC_STATUS;
 static char* mqtt_subscribe_topic 		= MQTT_SUBSCRIBE_TOPIC_RX;
 
-const int WIFI_CONNECTED_BIT = BIT0;
-const int MQTT_CONNECTED_BIT = BIT1;
+const int WIFI_CONNECTED_BIT 			= BIT0;
+const int MQTT_ADAFRUIT_CONNECTED_BIT 	= BIT1;
+const int MQTT_GCLOUD_CONNECTED_BIT 	= BIT2;
 
 // queue to pass data from the mqtt event handler to the mqtt rx task
 QueueHandle_t queue_mqtt_subs_to_rx_task;
 QueueHandle_t queue_mqtt_tx;
 
-static esp_mqtt_client_handle_t client;
+static esp_mqtt_client_handle_t client_adafruit;
+static esp_mqtt_client_handle_t client_gcloud;
 
 /* ===== Prototypes of private functions ===== */
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event);
@@ -95,8 +102,12 @@ void mqtt_publish_task(void *pvParameter)
 	char* command_string_value;
 	BaseType_t xStatus;
 
+	// printf("Initially waiting in MQTT Tx task\n\n\n");
+	// vTaskDelay(15000 / portTICK_RATE_MS);
+
 	const esp_mqtt_client_config_t mqtt_cfg = {
 		.uri = CONFIG_BROKER_URI,
+		.client_id = "dummy",
 		.event_handle = mqtt_event_handler,
 		.cert_pem = (const char *)mqtts_cert_start,
 		.username = MQTT_USERNAME,
@@ -104,14 +115,12 @@ void mqtt_publish_task(void *pvParameter)
 		.disable_clean_session = 0,
 	};
 
-	client = esp_mqtt_client_init(&mqtt_cfg);
-	esp_mqtt_client_start(client);
-
-	// xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+	client_adafruit = esp_mqtt_client_init(&mqtt_cfg);
+	esp_mqtt_client_start(client_adafruit);
 
 	while(1)	{
 		// always wait for this
-		xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+		xEventGroupWaitBits(wifi_event_group, MQTT_ADAFRUIT_CONNECTED_BIT, false, true, portMAX_DELAY);
 
 		// read data from the queue
 		xStatus = xQueueReceive(queue_mqtt_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
@@ -125,7 +134,7 @@ void mqtt_publish_task(void *pvParameter)
 				ESP_LOGI(TAG, "Received from Command Processor TASK: %s (%d)\n", command_string_value, queue_rcv_value);
 				vTaskDelay(MQTT_TRANSACTION_WAIT_TIME / portTICK_RATE_MS);
 
-				msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic_status, command_string_value, 0, 0, 0);
+				msg_id = esp_mqtt_client_publish(client_adafruit, mqtt_publish_topic_status, command_string_value, 0, 0, 0);
 			}
 			else
 			{
@@ -133,7 +142,7 @@ void mqtt_publish_task(void *pvParameter)
 				ESP_LOGI(TAG, "Received from Command Processor TASK: %s (%d)\n", command_string_value, queue_rcv_value);
 				vTaskDelay(MQTT_TRANSACTION_WAIT_TIME / portTICK_RATE_MS);
 
-				msg_id = esp_mqtt_client_publish(client, mqtt_publish_topic, command_string_value, 0, 0, 0);
+				msg_id = esp_mqtt_client_publish(client_adafruit, mqtt_publish_topic, command_string_value, 0, 0, 0);
 			}
 
 			if (msg_id != -1)	{
@@ -155,12 +164,12 @@ void mqtt_rx_task(void *pvParameter)
 	rx_command_t mqtt_command;
     mqtt_command.rx_id = MQTT_RX;
 
-	xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+	xEventGroupWaitBits(wifi_event_group, MQTT_ADAFRUIT_CONNECTED_BIT, false, true, portMAX_DELAY);
 	printf("MQTT Connected (MQTT RX task).\n");
 
 	while(1)	{
 		// always wait for this
-		xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+		xEventGroupWaitBits(wifi_event_group, MQTT_ADAFRUIT_CONNECTED_BIT, false, true, portMAX_DELAY);
 
 		// read data from the queue (passed from the event handler)
 		xStatus = xQueueReceive(queue_mqtt_subs_to_rx_task, &(mqtt_data_received),  50 / portTICK_RATE_MS);
@@ -251,19 +260,17 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 		.disable_clean_session = 0,
 	};
 
-	client = esp_mqtt_client_init(&mqtt_cfg);
-	esp_mqtt_client_start(client);
-
-	// xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+	client_gcloud = esp_mqtt_client_init(&mqtt_cfg);
+	esp_mqtt_client_start(client_gcloud);
 
 	while(1)	
 	{
 		// always wait for this
-		xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+		xEventGroupWaitBits(wifi_event_group, MQTT_GCLOUD_CONNECTED_BIT, false, true, portMAX_DELAY);
 
 		ESP_LOGI(TAG, "Publishing to Google Cloud.\n");
 
-		msg_id = esp_mqtt_client_publish(client, "/devices/temp-sensor-buenos-aires/events", "25", 0, 0, 0);
+		msg_id = esp_mqtt_client_publish(client_gcloud, "/devices/temp-sensor-buenos-aires/events", "25", 0, 0, 0);
 		if (msg_id != -1)	
 		{
 			ESP_LOGI(TAG, "Sent publish successful.\n");
@@ -282,13 +289,15 @@ void start_custom_mqtt_client()
 {
 	// wait for wifi connection (max 10 seconds)
 	// xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, 10000 / portTICK_RATE_MS);
-	esp_mqtt_client_start(client);
+	// esp_mqtt_client_start(client_adafruit);
+	esp_mqtt_client_start(client_gcloud);
 }
 
 
 void stop_custom_mqtt_client()
 {
-	esp_mqtt_client_stop(client);
+	// esp_mqtt_client_stop(client_adafruit);
+	esp_mqtt_client_stop(client_gcloud);
 }
 
 
@@ -299,54 +308,80 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 	int msg_id = 0;
 	BaseType_t xStatus;
 	mqtt_sub_data_received_t mqtt_data_received;
+	client_type_t client_type;
+
+	// directly comapare pointers because it is not possible to access client->config->uri
+	if (client == client_adafruit)	{
+		client_type = CLIENT_TYPE_ADAFRUIT;
+	}
+	else if (client_gcloud)	{
+		client_type = CLIENT_TYPE_GCLOUD;
+	}
+	else	{
+		printf("MQTT event from unknown client, returning with error.\n\n");
+		return ESP_FAIL;
+	}
 
 	switch (event->event_id)	{
 		case MQTT_EVENT_CONNECTED:
-			printf("MQTT_EVENT_CONNECTED\n");
-			xEventGroupSetBits(wifi_event_group, MQTT_CONNECTED_BIT);
-			msg_id = esp_mqtt_client_subscribe(client, mqtt_subscribe_topic, 0);
-            printf("Subscribing to topic %s with msg_id = %d.\n", mqtt_subscribe_topic, msg_id);
+			if (client_type == CLIENT_TYPE_ADAFRUIT)
+			{
+				printf("MQTT_EVENT_CONNECTED to ADAFRUIT\n");
+				xEventGroupSetBits(wifi_event_group, MQTT_ADAFRUIT_CONNECTED_BIT);
+
+				printf("Adafruit client\n.");
+				msg_id = esp_mqtt_client_subscribe(client, mqtt_subscribe_topic, 0);
+				printf("Subscribing to topic %s with msg_id = %d.\n", mqtt_subscribe_topic, msg_id);
+			}
+			else
+			{
+				printf("MQTT_EVENT_CONNECTED to GCLOUD\n");
+				xEventGroupSetBits(wifi_event_group, MQTT_GCLOUD_CONNECTED_BIT);
+			}
 			break;
 
 		case MQTT_EVENT_DISCONNECTED:
-			printf("MQTT_EVENT_DISCONNECTED\n");
+			printf("MQTT_EVENT_DISCONNECTED (client %d)\n", client_type);
 			break;
 
 		case MQTT_EVENT_SUBSCRIBED:
-			printf("MQTT_EVENT_SUBSCRIBED with msg_id = %d.\n", event->msg_id);
+			printf("MQTT_EVENT_SUBSCRIBED with msg_id = %d (client %d).\n", event->msg_id, client_type);
 			break;
 
 		case MQTT_EVENT_UNSUBSCRIBED:
-			printf("MQTT_EVENT_UNSUBSCRIBED, msg_id=%d.\n", event->msg_id);
+			printf("MQTT_EVENT_UNSUBSCRIBED, msg_id=%d (client %d).\n", event->msg_id, client_type);
 			break;
 
 		case MQTT_EVENT_PUBLISHED:
-			printf("MQTT_EVENT_PUBLISHED, msg_id=%d.\n", event->msg_id);
+			printf("MQTT_EVENT_PUBLISHED, msg_id=%d (client %d).\n", event->msg_id, client_type);
 			break;
 
 		case MQTT_EVENT_DATA:
-			printf("MQTT_EVENT_DATA\n");
-			// printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-			// printf("DATA=%.*s\r\n", event->data_len, event->data);
-
-			mqtt_data_received.data_len = event->data_len;
-			mqtt_data_received.data = event->data;
-			mqtt_data_received.topic_len = event->topic_len;
-			mqtt_data_received.topic = event->topic;
-			xStatus = xQueueSendToBack(queue_mqtt_subs_to_rx_task, &mqtt_data_received, 0);
-			if (xStatus != pdPASS)
+			if (client_type == CLIENT_TYPE_ADAFRUIT)
 			{
-				printf("Could not send MQTT data_received to the queue.\n");
+				printf("MQTT_EVENT_DATA from ADAFRUIT\n");
+				// printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+				// printf("DATA=%.*s\r\n", event->data_len, event->data);
+
+				mqtt_data_received.data_len = event->data_len;
+				mqtt_data_received.data = event->data;
+				mqtt_data_received.topic_len = event->topic_len;
+				mqtt_data_received.topic = event->topic;
+				xStatus = xQueueSendToBack(queue_mqtt_subs_to_rx_task, &mqtt_data_received, 0);
+				if (xStatus != pdPASS)
+				{
+					printf("Could not send MQTT data_received to the queue.\n");
+				}
 			}
 
 			break;
 
 		case MQTT_EVENT_ERROR:
-			printf("MQTT_EVENT_ERROR\n");
+			printf("MQTT_EVENT_ERROR (client %d).\n", client_type);
 			break;
 
 		default:
-			printf("Other event - id: %d.\n", event->event_id);
+			printf("Other event - id: %d (client %d).\n", event->event_id, client_type);
 			break;
 	}
 	return ESP_OK;

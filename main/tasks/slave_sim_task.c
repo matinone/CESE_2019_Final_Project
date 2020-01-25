@@ -17,8 +17,8 @@
 
 /* ===== Macros of private constants ===== */
 #define I2C_SLAVE_NUM           I2C_NUM_0
-#define I2C_SLAVE_TX_BUF_LEN    1024
-#define I2C_SLAVE_RX_BUF_LEN    1024
+#define I2C_SLAVE_TX_BUF_LEN    512
+#define I2C_SLAVE_RX_BUF_LEN    512
 #define SLAVE_PROCESS_A_TIME    30
 #define SLAVE_PROCESS_B_TIME    15
 

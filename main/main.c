@@ -45,6 +45,7 @@ void app_main()
 
 	// disable the default wifi logging
 	esp_log_level_set("wifi", ESP_LOG_NONE);
+	// esp_log_level_set("esp-tls", ESP_LOG_INFO);
 
 	// initialize NVS (Non Volatile Storage), restart system if the initialization fails
 	return_value = init_nvs_storage(INCLUDE_NVS_STORAGE);
@@ -71,19 +72,19 @@ void app_main()
 		xTaskCreate(&wifi_secure_tx_task, "wifi_secure_tx_task", 2048*3, NULL, 6, NULL);
 		xTaskCreate(&wifi_secure_rx_cmd_task, "wifi_secure_rx_cmd_task", 2048*3, NULL, 6, NULL);
 		#else
-		xTaskCreate(&mqtt_publish_task, "mqtt_publish_task", 2048, NULL, 6, NULL);
-		xTaskCreate(&mqtt_rx_task, "mqtt_rx_task", 2048, NULL, 6, NULL);
+		xTaskCreate(&mqtt_publish_task, "mqtt_publish_task", 1024 * 2, NULL, 6, NULL);
+		xTaskCreate(&mqtt_rx_task, "mqtt_rx_task", 1024 * 1.5, NULL, 6, NULL);
+		xTaskCreate(&mqtt_gcloud_publish_task, "mqtt_gcloud_publish_task", 2048 * 4, NULL, 6, NULL);
 		#endif
 	#endif
 
 	// create the rest of the tasks with priority lower than wifi task
 	xTaskCreate(&command_processor_task, "command_processor_task", 2048, NULL, 5, NULL);
-	// xTaskCreate(&command_processor_task, "command_processor_task", 2048*6, NULL, 5, NULL);
-	xTaskCreate(&echo_task, "echo_task", 2048, NULL, 4, NULL);
+	// xTaskCreate(&echo_task, "echo_task", 1024 * 1.5, NULL, 4, NULL);
 	
 	// do not use I2C for now
-	xTaskCreate(&i2c_master_task, "i2c_master_task", 2048, NULL, 4, NULL);
-	xTaskCreate(&slave_sim_task, "slave_sim_task", 2048, NULL, 4, NULL);
+	xTaskCreate(&i2c_master_task, "i2c_master_task", 1024 * 2, NULL, 4, NULL);
+	xTaskCreate(&slave_sim_task, "slave_sim_task", 1024 * 2, NULL, 4, NULL);
 
 	// vTaskStartScheduler is called in the startup code before app_main is executed (see start_cpu0 function in ESP-IDF components/esp32/cpu_start.c)
 }

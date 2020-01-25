@@ -79,7 +79,7 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
         return NULL;
     }
 
-    uint8_t oBuf[5000];
+    uint8_t oBuf[1000];
 
     mbedtls_entropy_context entropy;
     mbedtls_ctr_drbg_context ctr_drbg;
