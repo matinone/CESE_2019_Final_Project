@@ -1,6 +1,9 @@
 # Build folder
 build/
 
+# Private keys
+*/authentication/*.pem
+
 # Sdkconfig.old files
 sdkconfig.old
 
