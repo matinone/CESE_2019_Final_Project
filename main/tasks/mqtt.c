@@ -10,6 +10,7 @@
 #include "mqtt.h"
 #include "command_processor.h"
 #include "slave_sim_task.h"
+#include "jwt_token.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -21,6 +22,7 @@
 
 #include "esp_log.h"
 #include "mqtt_client.h"
+#include "lwip/apps/sntp.h"
 
 /* ===== Macros of private constants ===== */
 #ifdef CONFIG_THINGSPEAK
@@ -174,6 +176,104 @@ void mqtt_rx_task(void *pvParameter)
             }
 		}
 		vTaskDelay(1000 / portTICK_RATE_MS);
+	}
+}
+
+extern const uint8_t device_bsas_key_start[] asm(DEVICE_BSAS_KEY_START);
+extern const uint8_t device_bsas_key_end[]   asm(DEVICE_BSAS_KEY_END);
+
+extern const uint8_t gcloud_cert_start[]   asm("_binary_gcloud_cert_pem_start");
+
+static void obtain_time(void)
+{
+    // wait for time to be set
+    time_t now = 0;
+    struct tm timeinfo = { 0 };
+    int retry = 0;
+    const int retry_count = 10;
+    while(timeinfo.tm_year < (2019 - 1900) && ++retry < retry_count) {
+        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        time(&now);
+        localtime_r(&now, &timeinfo);
+    }
+}
+
+/* ===== Implementations of public functions ===== */
+void mqtt_gcloud_publish_task(void *pvParameter)
+{
+	// wait for wifi connection
+	xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
+
+	ESP_LOGI(TAG, "Initializing SNTP");
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+
+    time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+
+    if (timeinfo.tm_year < (2016 - 1900)) 
+    {
+        ESP_LOGI(TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
+        obtain_time();
+        // update 'now' variable with current time
+        time(&now);
+    }
+
+    char strftime_buf[64];
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
+
+
+	int msg_id;
+
+	ESP_LOGI(TAG, "Creating JWT Token.\n");
+
+	char* current_token = createGCPJWT("gcloud-training-mati", device_bsas_key_start, device_bsas_key_end - device_bsas_key_start);
+
+	if (current_token != NULL)
+	{
+		printf("JWT: %s\n", current_token);
+	}
+
+	const esp_mqtt_client_config_t mqtt_cfg = {
+		.uri = "mqtts://mqtt.2030.ltsapis.goog:8883",
+		.client_id = "projects/gcloud-training-mati/locations/us-central1/registries/iotlab-registry/devices/temp-sensor-buenos-aires",
+		.event_handle = mqtt_event_handler,
+		.cert_pem = (const char *)gcloud_cert_start,
+		.username = "unused",
+		.password = current_token,
+		.disable_clean_session = 0,
+	};
+
+	client = esp_mqtt_client_init(&mqtt_cfg);
+	esp_mqtt_client_start(client);
+
+	// xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+
+	while(1)	
+	{
+		// always wait for this
+		xEventGroupWaitBits(wifi_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
+
+		ESP_LOGI(TAG, "Publishing to Google Cloud.\n");
+
+		msg_id = esp_mqtt_client_publish(client, "/devices/temp-sensor-buenos-aires/events", "25", 0, 0, 0);
+		if (msg_id != -1)	
+		{
+			ESP_LOGI(TAG, "Sent publish successful.\n");
+		}
+		else	
+		{
+			printf("Error publishing.\n");
+		}
+
+		vTaskDelay(5000 / portTICK_RATE_MS);
 	}
 }
 

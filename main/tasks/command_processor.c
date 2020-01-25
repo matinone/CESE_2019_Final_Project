@@ -14,14 +14,12 @@
 #include "mqtt.h"
 #include "nvs_storage.h"
 #include "serial_protocol_common.h"
-// #include "jwt_token.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 
 #include "esp_log.h"
-
 #include <string.h>
 
 
@@ -37,9 +35,6 @@ extern QueueHandle_t queue_tls_https_tx;
 extern QueueHandle_t queue_mqtt_tx;
 extern QueueHandle_t queue_ble_server_tx;
 extern QueueHandle_t queue_i2c_master;
-
-// extern const uint8_t gcloud_cert_start[] asm(GCLOUD_CERTIFICATE_START);
-// extern const uint8_t gcloud_cert_end[]   asm(GCLOUD_CERTIFICATE_END);
 
 wireless_state_t wireless_state;
 rx_module_t wifi_module;
@@ -82,15 +77,6 @@ void command_processor_task(void *pvParameter)
         {
             ESP_LOGI(TAG, "Received command %s from %s.\n", translate_command_type(current_command.command),
                                                      translate_rx_module(current_command.rx_id));
-
-            // do something here depending on the received command
-            // char* my_jwt = createGCPJWT("testing_project", gcloud_cert_start, gcloud_cert_end - gcloud_cert_start);
-            // if (my_jwt != NULL)
-            // {
-            //     printf("JWT: %s\n", my_jwt);
-            //     free(my_jwt);
-            // }
-            // continue;
 
             switch(current_command.command)
             {

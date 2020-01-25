@@ -49,8 +49,8 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
         base64Header);             // Base64 encoded data.
 
     time_t now;
-    // time(&now);
-    now = 1000000;
+    time(&now);
+    // now = 1000000;
     uint32_t iat = now;              // Set the time now.
     uint32_t exp = iat + 60*60;      // Set the expiry time.
 

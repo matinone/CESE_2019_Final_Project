@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define GCLOUD_CERTIFICATE_START    "_binary_full_gcloud_pem_start"
-#define GCLOUD_CERTIFICATE_END      "_binary_full_gcloud_pem_end"
+#define DEVICE_BSAS_KEY_START    "_binary_device_bsas_key_pem_start"
+#define DEVICE_BSAS_KEY_END      "_binary_device_bsas_key_pem_end"
 
 char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t privateKeySize);
 

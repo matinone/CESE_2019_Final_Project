@@ -62,6 +62,8 @@ void mqtt_publish_task(void *pvParameter);
 *-------------------------------------------------------------------*/
 void mqtt_rx_task(void *pvParameter);
 
+void mqtt_gcloud_publish_task(void *pvParameter);
+
 
 /*------------------------------------------------------------------
 |  Function: start_mqtt_custom_client
