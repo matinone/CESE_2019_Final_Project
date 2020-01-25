@@ -49,6 +49,12 @@
 	#endif
 #endif
 
+#define DEVICE_BSAS_KEY_START	"_binary_device_bsas_key_pem_start"
+#define DEVICE_BSAS_KEY_END   	"_binary_device_bsas_key_pem_end"
+#define GCLOUD_KEY_START    	"_binary_gcloud_cert_pem_start"
+
+
+/* ===== Private structs and enums ===== */
 typedef enum {
 	CLIENT_TYPE_ADAFRUIT,
 	CLIENT_TYPE_GCLOUD,
@@ -59,6 +65,7 @@ typedef enum {
 extern EventGroupHandle_t wifi_event_group;
 extern QueueHandle_t queue_command_processor_rx;
 
+// Adafruit/Thingspeak variables
 extern const uint8_t mqtts_cert_start[] asm(BINARY_CERTIFICATE_START);
 extern const uint8_t mqtts_cert_end[]   asm(BINARY_CERTIFICATE_END);
 static const char *TAG = "MQTTS_TASK";
@@ -66,6 +73,12 @@ static char* mqtt_publish_topic 		= MQTT_PUBLISH_TOPIC_TX;
 static char* mqtt_publish_topic_status 	= MQTT_PUBLISH_TOPIC_STATUS;
 static char* mqtt_subscribe_topic 		= MQTT_SUBSCRIBE_TOPIC_RX;
 
+// Google Cloud variables
+extern const uint8_t device_bsas_key_start[] 	asm(DEVICE_BSAS_KEY_START);
+extern const uint8_t device_bsas_key_end[]   	asm(DEVICE_BSAS_KEY_END);
+extern const uint8_t gcloud_cert_start[]   		asm(GCLOUD_KEY_START);
+
+// event bits
 const int WIFI_CONNECTED_BIT 			= BIT0;
 const int MQTT_ADAFRUIT_CONNECTED_BIT 	= BIT1;
 const int MQTT_GCLOUD_CONNECTED_BIT 	= BIT2;
@@ -79,6 +92,7 @@ static esp_mqtt_client_handle_t client_gcloud;
 
 /* ===== Prototypes of private functions ===== */
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event);
+static void obtain_time(void);
 
 
 /* ===== Implementations of public functions ===== */
@@ -101,9 +115,6 @@ void mqtt_publish_task(void *pvParameter)
 	// char str_number[3];
 	char* command_string_value;
 	BaseType_t xStatus;
-
-	// printf("Initially waiting in MQTT Tx task\n\n\n");
-	// vTaskDelay(15000 / portTICK_RATE_MS);
 
 	const esp_mqtt_client_config_t mqtt_cfg = {
 		.uri = CONFIG_BROKER_URI,
@@ -188,25 +199,6 @@ void mqtt_rx_task(void *pvParameter)
 	}
 }
 
-extern const uint8_t device_bsas_key_start[] asm(DEVICE_BSAS_KEY_START);
-extern const uint8_t device_bsas_key_end[]   asm(DEVICE_BSAS_KEY_END);
-
-extern const uint8_t gcloud_cert_start[]   asm("_binary_gcloud_cert_pem_start");
-
-static void obtain_time(void)
-{
-    // wait for time to be set
-    time_t now = 0;
-    struct tm timeinfo = { 0 };
-    int retry = 0;
-    const int retry_count = 10;
-    while(timeinfo.tm_year < (2019 - 1900) && ++retry < retry_count) {
-        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
-        time(&now);
-        localtime_r(&now, &timeinfo);
-    }
-}
 
 /* ===== Implementations of public functions ===== */
 void mqtt_gcloud_publish_task(void *pvParameter)
@@ -226,29 +218,23 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 
     if (timeinfo.tm_year < (2016 - 1900)) 
     {
-        ESP_LOGI(TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
+        ESP_LOGI(TAG, "Time is not set yet. Using WiFi to get time over SNTP.");
         obtain_time();
         // update 'now' variable with current time
         time(&now);
     }
-
-    char strftime_buf[64];
-    time(&now);
-    localtime_r(&now, &timeinfo);
-    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
-
-
-	int msg_id;
+    // char strftime_buf[64];
+    // time(&now);
+    // localtime_r(&now, &timeinfo);
+    // strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    // ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
 
 	ESP_LOGI(TAG, "Creating JWT Token.\n");
-
 	char* current_token = createGCPJWT("gcloud-training-mati", device_bsas_key_start, device_bsas_key_end - device_bsas_key_start);
-
-	if (current_token != NULL)
-	{
-		printf("JWT: %s\n", current_token);
-	}
+	// if (current_token != NULL)
+	// {
+	// 	printf("JWT: %s\n", current_token);
+	// }
 
 	const esp_mqtt_client_config_t mqtt_cfg = {
 		.uri = "mqtts://mqtt.2030.ltsapis.goog:8883",
@@ -263,6 +249,7 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 	client_gcloud = esp_mqtt_client_init(&mqtt_cfg);
 	esp_mqtt_client_start(client_gcloud);
 
+	int msg_id;
 	while(1)	
 	{
 		// always wait for this
@@ -289,14 +276,14 @@ void start_custom_mqtt_client()
 {
 	// wait for wifi connection (max 10 seconds)
 	// xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, 10000 / portTICK_RATE_MS);
-	// esp_mqtt_client_start(client_adafruit);
+	esp_mqtt_client_start(client_adafruit);
 	esp_mqtt_client_start(client_gcloud);
 }
 
 
 void stop_custom_mqtt_client()
 {
-	// esp_mqtt_client_stop(client_adafruit);
+	esp_mqtt_client_stop(client_adafruit);
 	esp_mqtt_client_stop(client_gcloud);
 }
 
@@ -385,4 +372,20 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 			break;
 	}
 	return ESP_OK;
+}
+
+
+static void obtain_time(void)
+{
+    // wait for time to be set
+    time_t now = 0;
+    struct tm timeinfo = { 0 };
+    int retry = 0;
+    const int retry_count = 10;
+    while(timeinfo.tm_year < (2019 - 1900) && ++retry < retry_count) {
+        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        time(&now);
+        localtime_r(&now, &timeinfo);
+    }
 }
