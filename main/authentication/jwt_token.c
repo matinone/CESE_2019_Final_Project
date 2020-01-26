@@ -8,12 +8,8 @@
 #include <mbedtls/ctr_drbg.h>
 #include <esp_wifi.h>
 #include <esp_err.h>
-// #include <apps/sntp/sntp.h>
 
 #include "base64_url.h"
-
-// This is an "xxd" file of the PEM of the private key.
-// #include "device1_private_pem.h"
 
 
 /**
@@ -50,7 +46,6 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
 
     time_t now;
     time(&now);
-    // now = 1000000;
     uint32_t iat = now;              // Set the time now.
     uint32_t exp = iat + 60*60;      // Set the expiry time.
 
@@ -63,13 +58,11 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
         strlen(payload),           // Length of data to encode.
         base64Payload);            // Base64 encoded data.
 
-    uint8_t headerAndPayload[800];
+    uint8_t headerAndPayload[300];
     sprintf((char*)headerAndPayload, "%s.%s", base64Header, base64Payload);
 
     // At this point we have created the header and payload parts, converted both to base64 and concatenated them
     // together as a single string.  Now we need to sign them using RSASSA
-
-    printf("Header and payload done\n");
 
     mbedtls_pk_context pk_context;
     mbedtls_pk_init(&pk_context);
@@ -79,7 +72,7 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
         return NULL;
     }
 
-    uint8_t oBuf[1000];
+    uint8_t oBuf[800];
 
     mbedtls_entropy_context entropy;
     mbedtls_ctr_drbg_context ctr_drbg;
@@ -87,7 +80,6 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
     mbedtls_entropy_init(&entropy);
 
     const char* pers="MyEntropy";
-                
     mbedtls_ctr_drbg_seed(
         &ctr_drbg,
         mbedtls_entropy_func,
@@ -95,7 +87,6 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
         (const unsigned char*)pers,
         strlen(pers));
     
-
     uint8_t digest[32];
     rc = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), headerAndPayload, strlen((char*)headerAndPayload), digest);
     if (rc != 0) {
@@ -115,7 +106,6 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
     base64url_encode((unsigned char *)oBuf, retSize, base64Signature);
 
     char* retData = (char*)malloc(strlen((char*)headerAndPayload) + 1 + strlen((char*)base64Signature) + 1);
-
     sprintf(retData, "%s.%s", headerAndPayload, base64Signature);
 
     mbedtls_pk_free(&pk_context);

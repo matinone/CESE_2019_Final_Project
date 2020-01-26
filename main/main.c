@@ -74,7 +74,7 @@ void app_main()
 		#else
 		xTaskCreate(&mqtt_publish_task, "mqtt_publish_task", 1024 * 2, NULL, 6, NULL);
 		xTaskCreate(&mqtt_rx_task, "mqtt_rx_task", 1024 * 1.5, NULL, 6, NULL);
-		xTaskCreate(&mqtt_gcloud_publish_task, "mqtt_gcloud_publish_task", 2048 * 4, NULL, 6, NULL);
+		xTaskCreate(&mqtt_gcloud_publish_task, "mqtt_gcloud_publish_task", 2048 * 3.5, NULL, 6, NULL);
 		#endif
 	#endif
 
