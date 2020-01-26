@@ -68,7 +68,6 @@ extern QueueHandle_t queue_command_processor_rx;
 // Adafruit/Thingspeak variables
 extern const uint8_t mqtts_cert_start[] asm(BINARY_CERTIFICATE_START);
 extern const uint8_t mqtts_cert_end[]   asm(BINARY_CERTIFICATE_END);
-static const char *TAG = "MQTTS_TASK";
 static char* mqtt_publish_topic 		= MQTT_PUBLISH_TOPIC_TX;
 static char* mqtt_publish_topic_status 	= MQTT_PUBLISH_TOPIC_STATUS;
 static char* mqtt_subscribe_topic 		= MQTT_SUBSCRIBE_TOPIC_RX;
@@ -89,6 +88,9 @@ QueueHandle_t queue_mqtt_tx;
 
 static esp_mqtt_client_handle_t client_adafruit;
 static esp_mqtt_client_handle_t client_gcloud;
+
+static const char *TAG_USER_TASK = "MQTTS_USER_TASK";
+static const char *TAG_GCLOUD_TASK = "MQTTS_GCLOUD_TASK";
 
 /* ===== Prototypes of private functions ===== */
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event);
@@ -142,7 +144,7 @@ void mqtt_publish_task(void *pvParameter)
 				// receive the next value, which will be the slave state
 				xStatus = xQueueReceive(queue_mqtt_tx, &queue_rcv_value,  50 / portTICK_RATE_MS);
 				command_string_value = translate_slave_machine_state(queue_rcv_value);
-				ESP_LOGI(TAG, "Received from Command Processor TASK: %s (%d)\n", command_string_value, queue_rcv_value);
+				ESP_LOGI(TAG_USER_TASK, "Received from Command Processor TASK: %s (%d)\n", command_string_value, queue_rcv_value);
 				vTaskDelay(MQTT_TRANSACTION_WAIT_TIME / portTICK_RATE_MS);
 
 				msg_id = esp_mqtt_client_publish(client_adafruit, mqtt_publish_topic_status, command_string_value, 0, 0, 0);
@@ -150,14 +152,14 @@ void mqtt_publish_task(void *pvParameter)
 			else
 			{
 				command_string_value = translate_command_type(queue_rcv_value);
-				ESP_LOGI(TAG, "Received from Command Processor TASK: %s (%d)\n", command_string_value, queue_rcv_value);
+				ESP_LOGI(TAG_USER_TASK, "Received from Command Processor TASK: %s (%d)\n", command_string_value, queue_rcv_value);
 				vTaskDelay(MQTT_TRANSACTION_WAIT_TIME / portTICK_RATE_MS);
 
 				msg_id = esp_mqtt_client_publish(client_adafruit, mqtt_publish_topic, command_string_value, 0, 0, 0);
 			}
 
 			if (msg_id != -1)	{
-				ESP_LOGI(TAG, "Sent publish successful.\n");
+				ESP_LOGI(TAG_USER_TASK, "Sent publish successful.\n");
 			}
 			else	{
 				printf("Error publishing.\n");
@@ -206,7 +208,7 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 	// wait for wifi connection
 	xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
 
-	ESP_LOGI(TAG, "Initializing SNTP");
+	ESP_LOGI(TAG_GCLOUD_TASK, "Initializing SNTP");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
     sntp_init();
@@ -218,7 +220,7 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 
     if (timeinfo.tm_year < (2016 - 1900)) 
     {
-        ESP_LOGI(TAG, "Time is not set yet. Using WiFi to get time over SNTP.");
+        ESP_LOGI(TAG_GCLOUD_TASK, "Time is not set yet. Using WiFi to get time over SNTP.");
         obtain_time();
         // update 'now' variable with current time
         time(&now);
@@ -227,9 +229,9 @@ void mqtt_gcloud_publish_task(void *pvParameter)
     // time(&now);
     // localtime_r(&now, &timeinfo);
     // strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    // ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
+    // ESP_LOGI(TAG_GCLOUD_TASK, "The current date/time is: %s", strftime_buf);
 
-	ESP_LOGI(TAG, "Creating JWT Token.\n");
+	ESP_LOGI(TAG_GCLOUD_TASK, "Creating JWT Token.\n");
 	char* current_token = createGCPJWT("gcloud-training-mati", device_bsas_key_start, device_bsas_key_end - device_bsas_key_start);
 	// if (current_token != NULL)
 	// {
@@ -255,12 +257,12 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 		// always wait for this
 		xEventGroupWaitBits(wifi_event_group, MQTT_GCLOUD_CONNECTED_BIT, false, true, portMAX_DELAY);
 
-		ESP_LOGI(TAG, "Publishing to Google Cloud.\n");
+		ESP_LOGI(TAG_GCLOUD_TASK, "Publishing to Google Cloud.\n");
 
 		msg_id = esp_mqtt_client_publish(client_gcloud, "/devices/temp-sensor-buenos-aires/events", "25", 0, 0, 0);
 		if (msg_id != -1)	
 		{
-			ESP_LOGI(TAG, "Sent publish successful.\n");
+			ESP_LOGI(TAG_GCLOUD_TASK, "Sent publish successful.\n");
 		}
 		else	
 		{
@@ -383,7 +385,7 @@ static void obtain_time(void)
     int retry = 0;
     const int retry_count = 10;
     while(timeinfo.tm_year < (2019 - 1900) && ++retry < retry_count) {
-        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+        ESP_LOGI(TAG_GCLOUD_TASK, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         time(&now);
         localtime_r(&now, &timeinfo);
