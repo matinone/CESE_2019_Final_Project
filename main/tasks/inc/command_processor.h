@@ -37,6 +37,7 @@ typedef enum {
     HTTP_RX,
     HTTPS_RX,
     MQTT_RX,
+    MQTT_GCLOUD,
     BLE_SERVER,
     UART_RX,
     I2C_MASTER_MOD,

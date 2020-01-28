@@ -33,6 +33,7 @@ extern QueueHandle_t queue_uart_tx;
 extern QueueHandle_t queue_http_tx;
 extern QueueHandle_t queue_tls_https_tx;
 extern QueueHandle_t queue_mqtt_tx;
+extern QueueHandle_t queue_mqtt_gcloud;
 extern QueueHandle_t queue_ble_server_tx;
 extern QueueHandle_t queue_i2c_master;
 
@@ -314,6 +315,8 @@ QueueHandle_t* get_module_queue(rx_module_t module)
             return &queue_tls_https_tx;
         case MQTT_RX:
             return &queue_mqtt_tx;
+        case MQTT_GCLOUD:
+            return &queue_mqtt_gcloud;
         case BLE_SERVER:
             return &queue_ble_server_tx;
         default:

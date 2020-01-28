@@ -89,6 +89,7 @@ const int MQTT_GCLOUD_CONNECTED_BIT 	= BIT2;
 // queue to pass data from the mqtt event handler to the mqtt rx task
 QueueHandle_t queue_mqtt_subs_to_rx_task;
 QueueHandle_t queue_mqtt_tx;
+QueueHandle_t queue_mqtt_gcloud;
 
 static esp_mqtt_client_handle_t client_adafruit;
 static esp_mqtt_client_handle_t client_gcloud;
@@ -108,6 +109,12 @@ void mqtt_publish_task(void *pvParameter)
     queue_mqtt_tx = xQueueCreate(5, sizeof(uint8_t));
     if (queue_mqtt_tx == NULL)	{
         printf("Could not create queue_mqtt_tx.\n");
+    }
+
+	// create a queue capable of containing 5 uint8_t values
+    queue_mqtt_gcloud = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_mqtt_gcloud == NULL)	{
+        printf("Could not create queue_mqtt_gcloud.\n");
     }
 
 	// create a queue capable of containing a 5 pointers to struct subscription_data_received_t
@@ -209,6 +216,10 @@ void mqtt_rx_task(void *pvParameter)
 /* ===== Implementations of public functions ===== */
 void mqtt_gcloud_publish_task(void *pvParameter)
 {
+	BaseType_t xStatus;
+	rx_command_t mqtt_command;
+    mqtt_command.rx_id = MQTT_GCLOUD;
+
 	// wait for wifi connection
 	xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
 
@@ -258,6 +269,13 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 		// always wait for this
 		xEventGroupWaitBits(wifi_event_group, MQTT_GCLOUD_CONNECTED_BIT, false, true, portMAX_DELAY);
 
+		// ask the command processor to get the slave status
+		mqtt_command.command = CMD_SLAVE_STATUS;
+		xStatus = xQueueSendToBack(queue_command_processor_rx, &mqtt_command, 1000 / portTICK_RATE_MS);
+		if (xStatus != pdPASS)	{
+			ESP_LOGE(TAG_GCLOUD_TASK, "Could not send the data to the queue.\n");
+		}
+
 		ESP_LOGI(TAG_GCLOUD_TASK, "Publishing to Google Cloud.\n");
 
 		msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, "25", 0, 0, 0);
@@ -267,7 +285,7 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 		}
 		else	
 		{
-			printf("Error publishing.\n");
+			ESP_LOGE(TAG_GCLOUD_TASK, "Error publishing.\n");
 		}
 
 		vTaskDelay(GCLOUD_PUBLISH_INTERVAL / portTICK_RATE_MS);
