@@ -52,6 +52,10 @@
 #define DEVICE_BSAS_KEY_START	"_binary_device_bsas_key_pem_start"
 #define DEVICE_BSAS_KEY_END   	"_binary_device_bsas_key_pem_end"
 #define GCLOUD_KEY_START    	"_binary_gcloud_cert_pem_start"
+#define GCLOUD_MQTT_URI			"mqtts://mqtt.2030.ltsapis.goog:8883"
+#define GCLOUD_CLIENT_ID		"projects/gcloud-training-mati/locations/us-central1/registries/iotlab-registry/devices/temp-sensor-buenos-aires"
+#define GCLOUD_DEVICE_TOPIC		"/devices/temp-sensor-buenos-aires/events"
+#define GCLOUD_PUBLISH_INTERVAL	30000
 
 
 /* ===== Private structs and enums ===== */
@@ -233,14 +237,11 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 
 	ESP_LOGI(TAG_GCLOUD_TASK, "Creating JWT Token.\n");
 	char* current_token = createGCPJWT("gcloud-training-mati", device_bsas_key_start, device_bsas_key_end - device_bsas_key_start);
-	// if (current_token != NULL)
-	// {
-	// 	printf("JWT: %s\n", current_token);
-	// }
+	// check current_token != NULL
 
 	const esp_mqtt_client_config_t mqtt_cfg = {
-		.uri = "mqtts://mqtt.2030.ltsapis.goog:8883",
-		.client_id = "projects/gcloud-training-mati/locations/us-central1/registries/iotlab-registry/devices/temp-sensor-buenos-aires",
+		.uri = GCLOUD_MQTT_URI,
+		.client_id = GCLOUD_CLIENT_ID,
 		.event_handle = mqtt_event_handler,
 		.cert_pem = (const char *)gcloud_cert_start,
 		.username = "unused",
@@ -259,7 +260,7 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 
 		ESP_LOGI(TAG_GCLOUD_TASK, "Publishing to Google Cloud.\n");
 
-		msg_id = esp_mqtt_client_publish(client_gcloud, "/devices/temp-sensor-buenos-aires/events", "25", 0, 0, 0);
+		msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, "25", 0, 0, 0);
 		if (msg_id != -1)	
 		{
 			ESP_LOGI(TAG_GCLOUD_TASK, "Sent publish successful.\n");
@@ -269,7 +270,7 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 			printf("Error publishing.\n");
 		}
 
-		vTaskDelay(5000 / portTICK_RATE_MS);
+		vTaskDelay(GCLOUD_PUBLISH_INTERVAL / portTICK_RATE_MS);
 	}
 }
 

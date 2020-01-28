@@ -45,7 +45,6 @@ void app_main()
 
 	// disable the default wifi logging
 	esp_log_level_set("wifi", ESP_LOG_NONE);
-	// esp_log_level_set("esp-tls", ESP_LOG_INFO);
 
 	// initialize NVS (Non Volatile Storage), restart system if the initialization fails
 	return_value = init_nvs_storage(INCLUDE_NVS_STORAGE);
