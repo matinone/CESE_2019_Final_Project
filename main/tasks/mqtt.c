@@ -55,6 +55,7 @@
 #define GCLOUD_MQTT_URI			"mqtts://mqtt.2030.ltsapis.goog:8883"
 #define GCLOUD_CLIENT_ID		"projects/gcloud-training-mati/locations/us-central1/registries/iotlab-registry/devices/temp-sensor-buenos-aires"
 #define GCLOUD_DEVICE_TOPIC		"/devices/temp-sensor-buenos-aires/events"
+#define GCLOUD_PROJECT_NAME		"gcloud-training-mati"
 #define GCLOUD_PUBLISH_INTERVAL	30000
 
 
@@ -125,7 +126,6 @@ void mqtt_publish_task(void *pvParameter)
 
 	int msg_id;
 	uint8_t queue_rcv_value;
-	// char str_number[3];
 	char* command_string_value;
 	BaseType_t xStatus;
 
@@ -213,7 +213,6 @@ void mqtt_rx_task(void *pvParameter)
 }
 
 
-/* ===== Implementations of public functions ===== */
 void mqtt_gcloud_publish_task(void *pvParameter)
 {
 	BaseType_t xStatus;
@@ -223,7 +222,7 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 	// wait for wifi connection
 	xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
 
-	ESP_LOGI(TAG_GCLOUD_TASK, "Initializing SNTP");
+	ESP_LOGI(TAG_GCLOUD_TASK, "Initializing SNTP to obtain current time");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
     sntp_init();
@@ -247,7 +246,7 @@ void mqtt_gcloud_publish_task(void *pvParameter)
     // ESP_LOGI(TAG_GCLOUD_TASK, "The current date/time is: %s", strftime_buf);
 
 	ESP_LOGI(TAG_GCLOUD_TASK, "Creating JWT Token.\n");
-	char* current_token = createGCPJWT("gcloud-training-mati", device_bsas_key_start, device_bsas_key_end - device_bsas_key_start);
+	char* current_token = createGCPJWT(GCLOUD_PROJECT_NAME, device_bsas_key_start, device_bsas_key_end - device_bsas_key_start);
 	// check current_token != NULL
 
 	const esp_mqtt_client_config_t mqtt_cfg = {
@@ -264,6 +263,10 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 	esp_mqtt_client_start(client_gcloud);
 
 	int msg_id;
+	uint8_t queue_rcv_value;
+	char* command_string_value;
+	char command_number_string[4];
+
 	while(1)	
 	{
 		// always wait for this
@@ -276,9 +279,24 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 			ESP_LOGE(TAG_GCLOUD_TASK, "Could not send the data to the queue.\n");
 		}
 
+		// read back the slave status from the command processor
+		xStatus = xQueueReceive(queue_mqtt_gcloud, &queue_rcv_value, 1000 / portTICK_RATE_MS);
+		if(xStatus == pdPASS)
+		{
+			command_string_value = translate_slave_machine_state(queue_rcv_value);
+			ESP_LOGI(TAG_GCLOUD_TASK, "Received from Command Processor TASK: %s (%d)", command_string_value, queue_rcv_value);
+		}
+		else
+		{
+			ESP_LOGI(TAG_GCLOUD_TASK, "Could not get Slave State.");
+			queue_rcv_value = 255;
+		}
+
+		sprintf(command_number_string, "%d", queue_rcv_value);
+
 		ESP_LOGI(TAG_GCLOUD_TASK, "Publishing to Google Cloud.\n");
 
-		msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, "25", 0, 0, 0);
+		msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, command_number_string, 0, 0, 0);
 		if (msg_id != -1)	
 		{
 			ESP_LOGI(TAG_GCLOUD_TASK, "Sent publish successful.\n");
