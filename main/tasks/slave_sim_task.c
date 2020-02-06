@@ -197,9 +197,9 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
             ESP_LOGI(TAG_FSM, "Entered into SLAVE_PROCESS_B.");
         }
         state_time_counter++;
-        if(state_time_counter == SLAVE_PROCESS_B_TIME)
+        if(current_cmd == CMD_SLAVE_START_B)
         {
-            ESP_LOGI(TAG_FSM, "Slave PROCESS_B finished, switching to SLAVE_DONE.");
+            ESP_LOGI(TAG_FSM, "Finishing Slave PROCESS_B, switching to SLAVE_DONE.");
             current_state = SLAVE_DONE;
 
             // notify master that the process finished
