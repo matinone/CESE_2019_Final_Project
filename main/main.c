@@ -72,7 +72,7 @@ void app_main()
 		xTaskCreate(&wifi_secure_rx_cmd_task, "wifi_secure_rx_cmd_task", 2048*3, NULL, 6, NULL);
 		#else
 		xTaskCreate(&mqtt_publish_task, "mqtt_publish_task", 1024 * 2, NULL, 6, NULL);
-		xTaskCreate(&mqtt_rx_task, "mqtt_rx_task", 1024 * 1.5, NULL, 6, NULL);
+		xTaskCreate(&mqtt_rx_task, "mqtt_rx_task", 1024 * 2, NULL, 6, NULL);
 		xTaskCreate(&mqtt_gcloud_publish_task, "mqtt_gcloud_publish_task", 2048 * 3.5, NULL, 6, NULL);
 		#endif
 	#endif

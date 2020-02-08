@@ -137,7 +137,7 @@ esp_err_t initialize_i2c_slave(uint16_t slave_addr)
 
 slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, uint8_t current_cmd)
 {
-    static uint8_t state_time_counter           = 0;
+    static uint32_t state_time_counter          = 0;
     static slave_machine_state_t paused_state   = SLAVE_IDLE;
     uint8_t command_frame[COMMAND_FRAME_LENGTH] = {COMMAND_FRAME_START, 0, COMMAND_FRAME_END};
     size_t sent_size;

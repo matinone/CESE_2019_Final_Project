@@ -298,6 +298,8 @@ char* translate_rx_module(rx_module_t module)
             return "UART_RX";
         case I2C_MASTER_MOD:
             return "I2C_MASTER";
+        case MQTT_GCLOUD:
+            return "MQTT_GCLOUD";
         default:
             return "UNKNOWN";
     }

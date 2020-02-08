@@ -280,9 +280,11 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 		}
 
 		// read back the slave status from the command processor
-		xStatus = xQueueReceive(queue_mqtt_gcloud, &queue_rcv_value, 1000 / portTICK_RATE_MS);
-		if(xStatus == pdPASS)
+		xStatus = xQueueReceive(queue_mqtt_gcloud, &queue_rcv_value, 2000 / portTICK_RATE_MS);
+		if(xStatus == pdPASS && queue_rcv_value == SLAVE_STATE_FRAME)
 		{
+			// receive the next value, which will be the slave state
+			xStatus = xQueueReceive(queue_mqtt_gcloud, &queue_rcv_value,  50 / portTICK_RATE_MS);
 			command_string_value = translate_slave_machine_state(queue_rcv_value);
 			ESP_LOGI(TAG_GCLOUD_TASK, "Received from Command Processor TASK: %s (%d)", command_string_value, queue_rcv_value);
 		}
