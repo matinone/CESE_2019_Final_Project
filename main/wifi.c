@@ -193,7 +193,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 		// start web server and mDNS here (or somewhere else using this bit)
 		// start the HTTP server task
 		
-		xTaskCreate(&http_server, "http_server", 20000, NULL, 6, NULL);
+		xTaskCreate(&http_server, "http_server", WEB_SERVER_TASK_STACK, NULL, 6, NULL);
 		printf("HTTP server started\n");
 
 		break;

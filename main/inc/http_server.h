@@ -14,6 +14,7 @@
 /* ===== Dependencies ===== */
 
 /* ===== Macros of public constants ===== */
+#define WEB_SERVER_TASK_STACK   15000
 
 /* ===== Public structs and enums ===== */
 
