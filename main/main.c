@@ -79,7 +79,7 @@ void app_main()
 
 	// create the rest of the tasks with priority lower than wifi task
 	xTaskCreate(&command_processor_task, "command_processor_task", 2048, NULL, 5, NULL);
-	// xTaskCreate(&echo_task, "echo_task", 1024 * 1.5, NULL, 4, NULL);
+	xTaskCreate(&echo_task, "echo_task", 1024 * 1.5, NULL, 4, NULL);
 	
 	// do not use I2C for now
 	xTaskCreate(&i2c_master_task, "i2c_master_task", 1024 * 2, NULL, 4, NULL);

@@ -1,7 +1,10 @@
+#include <jwt_token.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+
 #include <mbedtls/pk.h>
 #include <mbedtls/error.h>
 #include <mbedtls/entropy.h>
@@ -36,7 +39,10 @@ static char* mbedtlsError(int errnum) {
  * @param privateKeySize The size in bytes of the private key.
  * @returns A JWT token for transmission to GCP.
  */
-char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t privateKeySize) {
+jwt_token_t createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t privateKeySize) {
+    
+    jwt_token_t current_token;
+    
     char base64Header[100];
     const char header[] = "{\"alg\":\"RS256\",\"typ\":\"JWT\"}";
     base64url_encode(
@@ -46,8 +52,10 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
 
     time_t now;
     time(&now);
-    uint32_t iat = now;              // Set the time now.
-    uint32_t exp = iat + 60*60;      // Set the expiry time.
+    uint32_t iat = now;                 // Set the time now.
+    uint32_t exp = iat + TOKEN_PERIOD;  // Set the expiry time.
+
+    current_token.exp_time = exp;
 
     char payload[100];
     sprintf(payload, "{\"iat\":%d,\"exp\":%d,\"aud\":\"%s\"}", iat, exp, projectId);
@@ -69,7 +77,9 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
     int rc = mbedtls_pk_parse_key(&pk_context, privateKey, privateKeySize, NULL, 0);
     if (rc != 0) {
         printf("\n\n\nFailed to mbedtls_pk_parse_key: %d (-0x%x): %s\n\n\n", rc, -rc, mbedtlsError(rc));
-        return NULL;
+        current_token.exp_time = 0;
+        current_token.token = NULL;
+        return current_token;
     }
 
     uint8_t oBuf[800];
@@ -91,14 +101,18 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
     rc = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), headerAndPayload, strlen((char*)headerAndPayload), digest);
     if (rc != 0) {
         printf("Failed to mbedtls_md: %d (-0x%x): %s\n", rc, -rc, mbedtlsError(rc));
-        return NULL;        
+        current_token.exp_time = 0;
+        current_token.token = NULL;
+        return current_token;
     }
 
     size_t retSize;
     rc = mbedtls_pk_sign(&pk_context, MBEDTLS_MD_SHA256, digest, sizeof(digest), oBuf, &retSize, mbedtls_ctr_drbg_random, &ctr_drbg);
     if (rc != 0) {
         printf("Failed to mbedtls_pk_sign: %d (-0x%x): %s\n", rc, -rc, mbedtlsError(rc));
-        return NULL;        
+        current_token.exp_time = 0;
+        current_token.token = NULL;
+        return current_token;
     }
 
 
@@ -108,6 +122,9 @@ char* createGCPJWT(const char* projectId, const uint8_t* privateKey, size_t priv
     char* retData = (char*)malloc(strlen((char*)headerAndPayload) + 1 + strlen((char*)base64Signature) + 1);
     sprintf(retData, "%s.%s", headerAndPayload, base64Signature);
 
+    current_token.token = retData;
+
     mbedtls_pk_free(&pk_context);
-    return retData;
+
+    return current_token;
 }

@@ -55,6 +55,7 @@
 #define GCLOUD_MQTT_URI			"mqtts://mqtt.2030.ltsapis.goog:8883"
 #define GCLOUD_CLIENT_ID		"projects/gcloud-training-mati/locations/us-central1/registries/iotlab-registry/devices/temp-sensor-buenos-aires"
 #define GCLOUD_DEVICE_TOPIC		"/devices/temp-sensor-buenos-aires/events"
+#define GCLOUD_DEVICE_STATE		"/devices/temp-sensor-buenos-aires/state"
 #define GCLOUD_PROJECT_NAME		"gcloud-training-mati"
 #define GCLOUD_PUBLISH_INTERVAL	30000
 
@@ -227,35 +228,35 @@ void mqtt_gcloud_publish_task(void *pvParameter)
     sntp_setservername(0, "pool.ntp.org");
     sntp_init();
 
-    time_t now;
+    time_t current_time;
     struct tm timeinfo;
-    time(&now);
-    localtime_r(&now, &timeinfo);
+    time(&current_time);
+    localtime_r(&current_time, &timeinfo);
 
     if (timeinfo.tm_year < (2016 - 1900)) 
     {
         ESP_LOGI(TAG_GCLOUD_TASK, "Time is not set yet. Using WiFi to get time over SNTP.");
         obtain_time();
-        // update 'now' variable with current time
-        time(&now);
+        // update 'current_time' variable with current time
+        time(&current_time);
     }
     // char strftime_buf[64];
-    // time(&now);
-    // localtime_r(&now, &timeinfo);
+    // time(&current_time);
+    // localtime_r(&current_time, &timeinfo);
     // strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
     // ESP_LOGI(TAG_GCLOUD_TASK, "The current date/time is: %s", strftime_buf);
 
-	ESP_LOGI(TAG_GCLOUD_TASK, "Creating JWT Token.\n");
-	char* current_token = createGCPJWT(GCLOUD_PROJECT_NAME, device_bsas_key_start, device_bsas_key_end - device_bsas_key_start);
-	// check current_token != NULL
+	ESP_LOGI(TAG_GCLOUD_TASK, "Creating JWT Token.");
+	jwt_token_t current_token = createGCPJWT(GCLOUD_PROJECT_NAME, device_bsas_key_start, device_bsas_key_end - device_bsas_key_start);
+	// check current_token.token != NULL
 
-	const esp_mqtt_client_config_t mqtt_cfg = {
+	esp_mqtt_client_config_t mqtt_cfg = {
 		.uri = GCLOUD_MQTT_URI,
 		.client_id = GCLOUD_CLIENT_ID,
 		.event_handle = mqtt_event_handler,
 		.cert_pem = (const char *)gcloud_cert_start,
 		.username = "unused",
-		.password = current_token,
+		.password = current_token.token,
 		.disable_clean_session = 0,
 	};
 
@@ -296,7 +297,25 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 
 		sprintf(command_number_string, "%d", queue_rcv_value);
 
-		ESP_LOGI(TAG_GCLOUD_TASK, "Publishing to Google Cloud.\n");
+		// update token if it is about to expire
+		time(&current_time);
+		if ((current_token.exp_time - 60) <= current_time)
+		{
+			ESP_LOGI(TAG_GCLOUD_TASK, "Time expired, updating JWT Token.");
+			current_token = createGCPJWT(GCLOUD_PROJECT_NAME, device_bsas_key_start, device_bsas_key_end - device_bsas_key_start);
+
+			ESP_LOGI(TAG_GCLOUD_TASK, "Updating MQTT GCloud client configuration.");
+			mqtt_cfg.password = current_token.token;
+			esp_mqtt_client_stop(client_gcloud);
+			xEventGroupClearBits(wifi_event_group, MQTT_GCLOUD_CONNECTED_BIT);
+			esp_mqtt_set_config(client_gcloud, &mqtt_cfg);
+			esp_mqtt_client_start(client_gcloud);
+
+			ESP_LOGI(TAG_GCLOUD_TASK, "Waiting for MQTT GCloud reconnection.");
+			xEventGroupWaitBits(wifi_event_group, MQTT_GCLOUD_CONNECTED_BIT, false, true, portMAX_DELAY);
+		}
+
+		ESP_LOGI(TAG_GCLOUD_TASK, "Publishing to Google Cloud.");
 
 		msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, command_number_string, 0, 0, 0);
 		if (msg_id != -1)	
@@ -350,6 +369,11 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 		return ESP_FAIL;
 	}
 
+	// uint32_t free_heap =  esp_get_free_heap_size();
+	// uint32_t min_free_heap =  esp_get_minimum_free_heap_size();
+	// uint32_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+	// printf("Current free heap = %d, Minimum free heap = %d, Largest block = %d\n", free_heap, min_free_heap, largest_block);
+
 	switch (event->event_id)	{
 		case MQTT_EVENT_CONNECTED:
 			if (client_type == CLIENT_TYPE_ADAFRUIT)
@@ -370,6 +394,14 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 
 		case MQTT_EVENT_DISCONNECTED:
 			printf("MQTT_EVENT_DISCONNECTED (client %d)\n", client_type);
+			if (client_type == CLIENT_TYPE_ADAFRUIT)
+			{
+				xEventGroupClearBits(wifi_event_group, MQTT_ADAFRUIT_CONNECTED_BIT);
+			}
+			else
+			{
+				xEventGroupClearBits(wifi_event_group, MQTT_GCLOUD_CONNECTED_BIT);
+			}
 			break;
 
 		case MQTT_EVENT_SUBSCRIBED:
