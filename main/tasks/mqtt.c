@@ -110,13 +110,7 @@ void mqtt_publish_task(void *pvParameter)
 	// create a queue capable of containing 5 uint8_t values
     queue_mqtt_tx = xQueueCreate(5, sizeof(uint8_t));
     if (queue_mqtt_tx == NULL)	{
-        printf("Could not create queue_mqtt_tx.\n");
-    }
-
-	// create a queue capable of containing 5 uint8_t values
-    queue_mqtt_gcloud = xQueueCreate(5, sizeof(uint8_t));
-    if (queue_mqtt_gcloud == NULL)	{
-        printf("Could not create queue_mqtt_gcloud.\n");
+        ESP_LOGE(TAG_USER_TASK, "Could not create queue_mqtt_tx.");
     }
 
 	// create a queue capable of containing a 5 pointers to struct subscription_data_received_t
@@ -219,6 +213,12 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 	BaseType_t xStatus;
 	rx_command_t mqtt_command;
     mqtt_command.rx_id = MQTT_GCLOUD;
+
+	// create a queue capable of containing 5 uint8_t values
+    queue_mqtt_gcloud = xQueueCreate(5, sizeof(uint8_t));
+    if (queue_mqtt_gcloud == NULL)	{
+        ESP_LOGE(TAG_GCLOUD_TASK, "Could not create queue_mqtt_gcloud.");
+    }
 
 	// wait for wifi connection
 	xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
