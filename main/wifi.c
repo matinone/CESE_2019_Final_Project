@@ -35,6 +35,8 @@ static const int CONNECTED_BIT 			= BIT0;
 static const int STA_CONNECTED_BIT 		= BIT2;
 static const int STA_DISCONNECTED_BIT	= BIT3;
 
+static const char* TAG = "WIFI_HANDLER";
+
 wifi_credential_t current_wifi_credentials = {
 		.ssid = CONFIG_WIFI_SSID,
 		.password = CONFIG_WIFI_PASSWORD,
@@ -55,7 +57,7 @@ void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode, wifi_credential_
 	{
 		// stop DHCP server
 		ESP_ERROR_CHECK(tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP));
-		printf("DHCP server stopped.\n");
+		ESP_LOGI(TAG, "DHCP server stopped.");
 
 		// assign a static IP to the network interface
 		tcpip_adapter_ip_info_t info;
@@ -64,11 +66,11 @@ void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode, wifi_credential_
 	    IP4_ADDR(&info.gw, 192, 168, 1, 1);
 	    IP4_ADDR(&info.netmask, 255, 255, 255, 0);
 		ESP_ERROR_CHECK(tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_AP, &info));
-		printf("TCP adapter configured with IP 192.168.1.1/24\n");
+		ESP_LOGI(TAG, "TCP adapter configured with IP 192.168.1.1/24 .");
 
 		// start the DHCP server
 	    ESP_ERROR_CHECK(tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP));
-		printf("DHCP server started\n");
+		ESP_LOGI(TAG, "DHCP server started.");
 	}
 
 	// should do this only the first time the function is called
@@ -121,7 +123,7 @@ void initialize_wifi(uint8_t first_time, wifi_mode_t wifi_mode, wifi_credential_
 	}
 
 	ESP_ERROR_CHECK(esp_wifi_start());
-	printf("Connecting to %s.", wifi_credential->ssid);
+	ESP_LOGI(TAG, "Connecting to %s.", wifi_credential->ssid);
 }
 
 
@@ -164,25 +166,25 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 		// reason == ASSOC_LEAVE means that esp_wifi_disconnect() was called
 		if (event->event_info.disconnected.reason == WIFI_REASON_ASSOC_LEAVE)
 		{
-			printf("WiFi intentionally disconnected, not trying to reconnect.\n");
+			ESP_LOGI(TAG, "WiFi intentionally disconnected, not trying to reconnect.");
 		}
 		else if (event->event_info.disconnected.reason == WIFI_REASON_AUTH_FAIL || 
 			event->event_info.disconnected.reason == WIFI_REASON_NO_AP_FOUND)
 		{
-			printf("Authentication failed while trying to connect (wrong SSID or password).\n");
+			ESP_LOGE(TAG, "Authentication failed while trying to connect (wrong SSID or password).");
 		}
 		else
 		{
 			if (connect_retry_num < MAX_WIFI_CONNECT_RETRY)
 			{
-				printf("WiFi disconnected (reason code %d), trying to reconnect %d/%d.\n", 
+				ESP_LOGE(TAG, "WiFi disconnected (reason code %d), trying to reconnect %d/%d.", 
 					event->event_info.disconnected.reason, connect_retry_num+1, MAX_WIFI_CONNECT_RETRY);
 				connect_retry_num++;
 				esp_wifi_connect();
 			}
 			else
 			{
-				printf("WiFi tried to reconnect %d times and failed. Not trying anymore.\n", MAX_WIFI_CONNECT_RETRY);
+				ESP_LOGE(TAG, "WiFi tried to reconnect %d times and failed. Not trying anymore.", MAX_WIFI_CONNECT_RETRY);
 			}
 		}
 		xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
@@ -194,15 +196,15 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 		// start the HTTP server task
 		
 		xTaskCreate(&http_server, "http_server", WEB_SERVER_TASK_STACK, NULL, 6, NULL);
-		printf("HTTP server started\n");
+		ESP_LOGI(TAG, "HTTP Web Server started.");
 
 		break;
 
 	case SYSTEM_EVENT_AP_STACONNECTED:
-		printf("New station connected to AP.\n");
+		ESP_LOGI(TAG, "New station connected to AP.");
 		if ( (xEventGroupGetBits(wifi_event_group) & CONNECTED_BIT) != 0 )
 		{
-			printf("Disconnecting station from Access Point.\n");
+			ESP_LOGI(TAG, "Disconnecting station from Access Point.");
 			esp_wifi_disconnect();
 		}
 		
@@ -210,10 +212,10 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 		break;
 
 	case SYSTEM_EVENT_AP_STADISCONNECTED:
-		printf("A station disconnected.\n");
+		ESP_LOGI(TAG, "A station disconnected.");
 		if ( (xEventGroupGetBits(wifi_event_group) & CONNECTED_BIT) == 0 )
 		{
-			printf("Reconnecting station to Access Point.\n");
+			ESP_LOGI(TAG, "Reconnecting station to Access Point.");
 			esp_wifi_connect();
 		}
 		xEventGroupSetBits(wifi_event_group, STA_DISCONNECTED_BIT);
@@ -222,6 +224,6 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 	default:
 		break;
 	}
-   
+
 	return ESP_OK;
 }

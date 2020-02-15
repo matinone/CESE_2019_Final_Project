@@ -56,7 +56,7 @@ int8_t initialize_command_processor(rx_module_t wifi_type)
     queue_command_processor_rx = xQueueCreate(5, sizeof(rx_command_t));
     if (queue_command_processor_rx == NULL)
     {
-        printf("Could not Command Processor RX QUEUE.\n");
+        ESP_LOGE(TAG, "Could not Command Processor RX QUEUE.");
         return -1;
     }
     return 0;
@@ -85,7 +85,7 @@ void command_processor_task(void *pvParameter)
                     char* nvs_ssid_value = get_nvs_string_value(WIFI_SSID_NVS_KEY);
                     char* nvs_password_value = get_nvs_string_value(WIFI_PASSWORD_NVS_KEY);
 
-                    printf("SSID = %s, PASSWORD = %s.\n", nvs_ssid_value, nvs_password_value);
+                    ESP_LOGI(TAG, "SSID = %s, PASSWORD = %s.", nvs_ssid_value, nvs_password_value);
                     // release memory allocated in get methods
                     free(nvs_ssid_value);
                     free(nvs_password_value);
@@ -96,7 +96,7 @@ void command_processor_task(void *pvParameter)
                     switch(wireless_state)
                     {
                         case WIFI_MODE:
-                            printf("Stopping WiFi.\n");
+                            ESP_LOGI(TAG, "Stopping WiFi.");
                             stop_wifi();
                             if (wifi_module == MQTT_RX)
                             {
@@ -105,7 +105,7 @@ void command_processor_task(void *pvParameter)
                             wireless_state = OFFLINE_MODE;
                             break;
                         case BLE_MODE:
-                            printf("Stopping BLE server and starting WiFi.\n");
+                            ESP_LOGI(TAG, "Stopping BLE server and starting WiFi.");
                             stop_ble_server();
                             initialize_wifi(0, WIFI_MODE_APSTA, get_current_wifi_credentials());
                             if (wifi_module == MQTT_RX)
@@ -115,7 +115,7 @@ void command_processor_task(void *pvParameter)
                             wireless_state = WIFI_MODE;
                             break;
                         case OFFLINE_MODE:
-                            printf("Starting WiFi.\n");
+                            ESP_LOGI(TAG, "Starting WiFi.");
                             initialize_wifi(0, WIFI_MODE_APSTA, get_current_wifi_credentials());
                             if (wifi_module == MQTT_RX)
                             {
@@ -124,7 +124,7 @@ void command_processor_task(void *pvParameter)
                             wireless_state = WIFI_MODE;
                             break;
                         default:
-                            printf("Invalid wireless state.\n");
+                            ESP_LOGI(TAG, "Invalid wireless state.");
                             wireless_state = OFFLINE_MODE;
                     }
 
@@ -134,7 +134,7 @@ void command_processor_task(void *pvParameter)
                     switch(wireless_state)
                     {
                         case WIFI_MODE:
-                            printf("Stopping WiFi and starting BLE server.\n");
+                            ESP_LOGI(TAG, "Stopping WiFi and starting BLE server.");
                             stop_wifi();
                             if (wifi_module == MQTT_RX)
                             {
@@ -144,17 +144,17 @@ void command_processor_task(void *pvParameter)
                             wireless_state = BLE_MODE;
                             break;
                         case BLE_MODE:
-                            printf("Stopping BLE server.\n");
+                            ESP_LOGI(TAG, "Stopping BLE server.");
                             stop_ble_server();
                             wireless_state = OFFLINE_MODE;
                             break;
                         case OFFLINE_MODE:
-                            printf("Starting BLE server.\n");
+                            ESP_LOGI(TAG, "Starting BLE server.");
                             start_ble_server();
                             wireless_state = BLE_MODE;
                             break;
                         default:
-                            printf("Invalid wireless state.\n");
+                            ESP_LOGI(TAG, "Invalid wireless state.");
                             wireless_state = OFFLINE_MODE;
                     }
                     break;
@@ -166,12 +166,12 @@ void command_processor_task(void *pvParameter)
                         xStatus = xQueueSendToBack(*generic_queue_handle_ptr, &current_command.command, 1000 / portTICK_RATE_MS);
                         if (xStatus != pdPASS)
                         {
-                            printf("Could not send the data to the queue.\n");
+                            ESP_LOGE(TAG, "Could not send the data to the queue.");
                         }
                     }
                     else
                     {
-                        printf("There is no queue handle match for module %s.\n", translate_rx_module(current_command.rx_id));
+                        ESP_LOGE(TAG, "There is no queue handle match for module %s.", translate_rx_module(current_command.rx_id));
                     }
                     break;
                 // do the same for all these commands that must be sent to the slave

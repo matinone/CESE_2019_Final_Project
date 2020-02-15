@@ -68,7 +68,7 @@ void slave_sim_task(void *pvParameter)
             sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, sent_frame, COMMAND_FRAME_LENGTH, 500 / portTICK_RATE_MS);
             if (sent_size == 0)
             {
-                printf("I2C slave buffer is full, slave UNABLE to write master\n");
+                ESP_LOGE(TAG_TASK, "I2C slave buffer is full, slave UNABLE to write master.");
             }
         }
         else
@@ -87,7 +87,7 @@ void slave_sim_task(void *pvParameter)
             sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, sent_frame, COMMAND_FRAME_LENGTH, 500 / portTICK_RATE_MS);
             if (sent_size == 0)
             {
-                printf("I2C slave buffer is full, slave UNABLE to write master\n");
+                ESP_LOGE(TAG_TASK,  "I2C slave buffer is full, slave UNABLE to write master.");
             }
         }
 
@@ -175,7 +175,7 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
             sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_FRAME_LENGTH, 500 / portTICK_RATE_MS);
             if (sent_size == 0)
             {
-                printf("I2C slave buffer is full, slave UNABLE to write master\n");
+                ESP_LOGE(TAG_FSM, "I2C slave buffer is full, slave UNABLE to write master.");
             }
         }
         else if(current_cmd == CMD_SLAVE_PAUSE)
@@ -207,7 +207,7 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
             sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_FRAME_LENGTH, 500 / portTICK_RATE_MS);
             if (sent_size == 0)
             {
-                printf("I2C slave buffer is full, slave UNABLE to write master\n");
+                ESP_LOGE(TAG_FSM, "I2C slave buffer is full, slave UNABLE to write master.");
             }
         }
         else if(current_cmd == CMD_SLAVE_PAUSE)

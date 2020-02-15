@@ -84,7 +84,7 @@ void i2c_master_task(void *pvParameter)
         if (xStatus == pdPASS)
         {
             ack_command.command = CMD_SLAVE_FAIL;
-            ESP_LOGI(TAG, "Received %d from Command Processor, sending it to slave", command_received);
+            ESP_LOGI(TAG, "Received %d from Command Processor, sending it to slave.", command_received);
             data_to_slave[1] = command_received;
             ret = i2c_master_write_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_to_slave, COMMAND_FRAME_LENGTH);
             if(ret == ESP_OK)
@@ -132,7 +132,7 @@ void i2c_master_task(void *pvParameter)
         ret = i2c_master_read_slave(I2C_MASTER_NUM, I2C_ESP_SLAVE_ADDR, data_from_slave, COMMAND_FRAME_LENGTH);
         if (ret == ESP_OK && check_frame_format(data_from_slave))
         {
-            ESP_LOGI(TAG, "Received (%d) from slave", data_from_slave[1]);
+            ESP_LOGI(TAG, "Received (%d) from slave.", data_from_slave[1]);
         }
 
         vTaskDelay(1000 / portTICK_RATE_MS);

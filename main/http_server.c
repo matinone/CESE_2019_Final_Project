@@ -39,6 +39,7 @@ extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
 extern const uint8_t wifi_icon_png_start[] asm("_binary_wifi_icon_png_start");
 extern const uint8_t wifi_icon_png_end[]   asm("_binary_wifi_icon_png_end");
 
+static const char* TAG = "WEB_SERVER_TASK";
 
 /* ===== Prototypes of private functions ===== */
 static void http_server_netconn_serve(struct netconn *conn);
@@ -113,7 +114,7 @@ static void http_server_netconn_serve(struct netconn *conn)
                 }
                 else
                 {
-                    printf("Unknown resource: %s\n", req->resource);
+                    ESP_LOGE(TAG, "Unknown resource: %s", req->resource);
                 }
             }
             // HTTP POST method
@@ -121,7 +122,7 @@ static void http_server_netconn_serve(struct netconn *conn)
             {
                 if(strcmp(req->resource, "/form_page") == 0) 
                 {
-                    printf("Received form with body: \n");
+                    ESP_LOGI(TAG, "Received form with body: ");
                     recover_encoded_spaces(req->body);
                     puts(req->body);
                     netconn_write(conn, http_html_header, sizeof(http_html_header) - 1, NETCONN_NOCOPY);
@@ -136,7 +137,7 @@ static void http_server_netconn_serve(struct netconn *conn)
 
                     if (nvs_error != ESP_OK)
                     {
-                        printf("Error writting WiFi credentials in flash memory\n");
+                        ESP_LOGE(TAG, "Error writting WiFi credentials in flash memory.");
                     }
 
                     // restart wifi with new credentials;
@@ -147,17 +148,17 @@ static void http_server_netconn_serve(struct netconn *conn)
                 }
                 else
                 {
-                    printf("Unknown resource: %s\n", req->resource);
+                    ESP_LOGE(TAG, "Unknown resource: %s .", req->resource);
                 }
             }
             else
             {
-                printf("Unknown method: %d\n", req->method);
+                ESP_LOGE(TAG, "Unknown method: %d .", req->method);
             } 
         }
         else 
         {
-            printf("Unknown request\n");
+            ESP_LOGE(TAG, "Unknown request.");
         }
 
         free_request(req);
