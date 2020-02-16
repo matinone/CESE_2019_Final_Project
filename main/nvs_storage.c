@@ -14,11 +14,14 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 
+#include "esp_log.h"
+
 /* ===== Macros of private constants ===== */
 
 
 /* ===== Declaration of private or external variables ===== */
 nvs_handle storage_nvs_handler; // NVS handler
+static const char *TAG  = "NVS_STORAGE";
 
 /* ===== Prototypes of private functions ===== */
 
@@ -36,7 +39,7 @@ esp_err_t init_nvs_storage(uint8_t storage)
 
     if (return_value != ESP_OK)
     {
-        printf("Could not initialize NVS.\n");
+        ESP_LOGE(TAG, "Could not initialize NVS.");
         return return_value;
     }
 
@@ -47,10 +50,10 @@ esp_err_t init_nvs_storage(uint8_t storage)
         if (return_value != ESP_OK) 
         {
             
-            printf("Unable to open NVS\n");
+            ESP_LOGE(TAG, "Unable to open NVS.");
             return return_value;
         }
-        printf("NVS successfully opened\n");
+        ESP_LOGI(TAG, "NVS successfully opened.");
     }
     
     return return_value;

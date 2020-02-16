@@ -62,11 +62,11 @@ void wifi_secure_tx_task(void *pvParameter)
 	// create a queue capable of containing 5 uint8_t values
     queue_tls_https_tx = xQueueCreate(5, sizeof(uint8_t));
     if (queue_tls_https_tx == NULL)	{
-        printf("Could not create queue_tls_https_tx.\n");
+        ESP_LOGE(TAG, "Could not create queue_tls_https_tx.");
     }
 
 	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
-	printf("WiFi successfully connected.\n\n");
+	ESP_LOGI(TAG, "WiFi successfully connected.");
 
 	mbedtls_connection_handler_t mbedtls_handler;
 	ret = configure_tls(&mbedtls_handler, WEB_SERVER, thingspeak_https_cert_start, thingspeak_https_cert_end);
@@ -85,7 +85,7 @@ void wifi_secure_tx_task(void *pvParameter)
 		// read data from the queue
 		xStatus = xQueueReceive(queue_tls_https_tx, &queue_rcv_value,  20 / portTICK_RATE_MS);
 		if (xStatus == pdPASS)	{
-			ESP_LOGI(TAG, "Received from Command Processor TASK: %d\n", queue_rcv_value);
+			ESP_LOGI(TAG, "Received from Command Processor TASK: %d", queue_rcv_value);
 			sprintf(request_buffer, HTTP_REQUEST_WRITE, queue_rcv_value);
 
 			ret = tls_send_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, request_buffer);
@@ -94,18 +94,18 @@ void wifi_secure_tx_task(void *pvParameter)
 				continue;
 			}
 
-			ESP_LOGI(TAG, "Receiving HTTP response.\n");
+			ESP_LOGI(TAG, "Receiving HTTP response.");
 			content_buf[0] = '\0';
 			int flag_rsp_ok = tls_receive_http_response(&mbedtls_handler,recv_buf, content_buf, RX_BUFFER_SIZE);
 
 			tls_clean_up(&mbedtls_handler, ret);
 
 			if (flag_rsp_ok == 1)	{
-				printf("HTTP response status OK.\n");
-				printf("Response Content: %s\n", content_buf);
+				ESP_LOGI(TAG, "HTTP response status OK.");
+				ESP_LOGI(TAG, "Response Content: %s", content_buf);
 			}
 			else	{
-				printf("HTTP response status NOT OK.\n");
+				ESP_LOGE(TAG, "HTTP response status NOT OK.");
 			}
 
 			putchar('\n'); // JSON output doesn't have a newline at end
@@ -141,7 +141,7 @@ void wifi_secure_rx_cmd_task(void * pvParameter)
 		// always wait for connection
 		xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 		
-		printf("\nChecking if there is any new command to execute.\n");
+		ESP_LOGI(TAG, "Checking if there is any new command to execute.");
 
 		ret = tls_send_http_request(&mbedtls_handler, WEB_SERVER, WEB_PORT, HTTP_REQUEST_READ_CMD);
 		if (ret != 0)	{
@@ -156,17 +156,17 @@ void wifi_secure_rx_cmd_task(void * pvParameter)
 		tls_clean_up(&mbedtls_handler, ret);
 
 		if (flag_rsp_ok == 1)	{
-			printf("HTTP response status OK.\n");
-			// printf("Response Content: %s\n", content_buf);
+			ESP_LOGI(TAG, "HTTP response status OK.");
+			// ESP_LOGI(TAG, "Response Content: %s", content_buf);
 
 			pch = strstr(content_buf, "CMD_");
 			if (pch != NULL)	{
-				printf("Received new command: %s\n", content_buf);
+				ESP_LOGI(TAG, "Received new command: %s", content_buf);
 
 				tls_https_command.command = str_to_cmd(content_buf);
 				xStatus = xQueueSendToBack(queue_command_processor_rx, &tls_https_command, 1000 / portTICK_RATE_MS);
 	            if (xStatus != pdPASS)	{
-	                printf("Could not send the data to the queue.\n");
+	                ESP_LOGE(TAG, "Could not send the data to the queue.");
 	            }
 			}
 			else	{
@@ -174,7 +174,7 @@ void wifi_secure_rx_cmd_task(void * pvParameter)
 			}
 		}
 		else	{
-			printf("HTTP response status NOT OK.\n");
+			ESP_LOGE(TAG, "HTTP response status NOT OK.");
 		}
 
 		putchar('\n'); // JSON output doesn't have a newline at end

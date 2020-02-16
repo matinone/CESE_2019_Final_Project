@@ -53,6 +53,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 extern QueueHandle_t queue_command_processor_rx;
 QueueHandle_t queue_ble_server_tx;
 
+static const char *TAG  = "BLE_SERVER";
+
 uint8_t char1_str[] = {0x11,0x22,0x33};
 esp_gatt_char_prop_t a_property = 0;
 
@@ -160,7 +162,7 @@ int8_t start_ble_server()
     queue_ble_server_tx = xQueueCreate(5, sizeof(uint8_t));
     if (queue_ble_server_tx == NULL)
     {
-        printf("Could not create queue_ble_server_tx.\n");
+        ESP_LOGE(TAG, "Could not create queue_ble_server_tx.");
     }
 
     // configure and initialize BT controller 

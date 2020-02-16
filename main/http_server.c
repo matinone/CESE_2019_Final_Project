@@ -55,7 +55,7 @@ void http_server(void *pvParameters)
     conn = netconn_new(NETCONN_TCP);
     netconn_bind(conn, NULL, 80);
     netconn_listen(conn);
-    printf("HTTP Server listening\n");
+    ESP_LOGI(TAG, "HTTP Server listening.");
     do {
         err = netconn_accept(conn, &newconn);
         if (err == ERR_OK) 

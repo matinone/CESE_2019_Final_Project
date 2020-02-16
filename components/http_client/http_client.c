@@ -12,12 +12,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "esp_log.h"
+
 
 /* ===== Macros of private constants ===== */
 
 
 /* ===== Declaration of private or external variables ===== */
-
+static const char *TAG  = "HTTP_CLIENT";
 
 /* ===== Prototypes of private functions ===== */
 
@@ -25,13 +27,13 @@
 /* ===== Implementations of public functions ===== */
 int send_http_request(int socket_handler, struct addrinfo* res, char* http_request)
 {
-	// printf("Sending HTTP request.\n");
+	// ESP_LOGI(TAG, "Sending HTTP request.");
 
 	if(socket_handler < 0) {
-		printf("Unable to allocate a new socket, not sending to ThingSpeak the received data.\n");
+		ESP_LOGE(TAG, "Unable to allocate a new socket, not sending to ThingSpeak the received data.");
 		return -1;
 	}
-	// printf("Socket allocated, id=%d.\n", socket_handler);
+	// ESP_LOGI(TAG, "Socket allocated, id=%d.", socket_handler);
 
 	// set socket timeout to 1 second (1000000 us)
 	struct timeval timeout = {
@@ -44,21 +46,21 @@ int send_http_request(int socket_handler, struct addrinfo* res, char* http_reque
 	// connect to the specified server
 	int con_result = lwip_connect(socket_handler, res->ai_addr, res->ai_addrlen);
 	if(con_result != 0) {
-		printf("Unable to connect to the target website, not sending to ThingSpeak the received data.\n");
+		ESP_LOGE(TAG, "Unable to connect to the target website, not sending to the page the received data.");
 		lwip_close_r(socket_handler);
 		return -1;
 	}
-	// printf("Connected to the target website.\n");
+	// ESP_LOGI(TAG, "Connected to the target website.");
 
 	// send the request
 	int result = lwip_write(socket_handler, http_request, strlen(http_request));
 	if(result < 0) {
-		printf("Unable to send the HTTP request, not sending to ThingSpeak the received data.\n");
+		ESP_LOGE(TAG, "Unable to send the HTTP request, not sending to the page the received data.");
 		lwip_close_r(socket_handler);
 		return -1;
 	}
-	// printf("HTTP request sent:  %s\n", http_request);
-	// printf("HTTP request sent.\n");
+	// ESP_LOGI(TAG, "HTTP request sent:  %s", http_request);
+	// ESP_LOGI(TAG, "HTTP request sent.");
 
 	return 0;
 }

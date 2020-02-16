@@ -18,11 +18,13 @@
 #include "mbedtls/certs.h"
 #include "mbedtls/error.h"
 
+#include "esp_log.h"
+
 /* ===== Macros of private constants ===== */
 
 
 /* ===== Declaration of private or external variables ===== */
-
+static const char *TAG  = "TLS_HTTPS_CLIENT";
 
 /* ===== Prototypes of private functions ===== */
 
@@ -43,7 +45,7 @@ int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, char* server, c
 								&mbedtls_handler->entropy, NULL, 0);
 	if(ret != 0)
 	{
-		printf("mbedtls_ctr_drbg_seed returned %d", ret);
+		ESP_LOGE(TAG, "mbedtls_ctr_drbg_seed returned %d", ret);
 		abort();
 	}
 
@@ -51,7 +53,7 @@ int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, char* server, c
 	ret = mbedtls_x509_crt_parse(&mbedtls_handler->cacert, cert_start, cert_end-cert_start);
 	if(ret < 0)
 	{
-		printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
+		ESP_LOGE(TAG, "mbedtls_x509_crt_parse returned -0x%x", -ret);
 		abort();
 	}
 
@@ -59,7 +61,7 @@ int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, char* server, c
 	ret = mbedtls_ssl_set_hostname(&mbedtls_handler->ssl, server);
 	if(ret != 0)
 	{
-		printf("mbedtls_ssl_set_hostname returned -0x%x", -ret);
+		ESP_LOGE(TAG, "mbedtls_ssl_set_hostname returned -0x%x", -ret);
 		abort();
 	}
 
@@ -68,7 +70,7 @@ int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, char* server, c
 		MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
 	if(ret != 0)
 	{
-		printf("mbedtls_ssl_config_defaults returned %d", ret);
+		ESP_LOGE(TAG, "mbedtls_ssl_config_defaults returned %d", ret);
 		abort();
 	}
 
@@ -86,7 +88,7 @@ int configure_tls(mbedtls_connection_handler_t* mbedtls_handler, char* server, c
 	ret = mbedtls_ssl_setup(&mbedtls_handler->ssl, &mbedtls_handler->conf);
 	if (ret != 0)
 	{
-		printf("mbedtls_ssl_setup returned -0x%x\n\n", -ret);
+		ESP_LOGE(TAG, "mbedtls_ssl_setup returned -0x%x", -ret);
 		abort();
 	}
 
@@ -100,46 +102,46 @@ int tls_send_http_request(mbedtls_connection_handler_t* mbedtls_handler, const c
 
 	mbedtls_net_init(&mbedtls_handler->server_fd);
 
-	printf("Connecting to %s:%s.\n", server, port);
+	ESP_LOGI(TAG, "Connecting to %s:%s.", server, port);
 	ret_value = mbedtls_net_connect(&mbedtls_handler->server_fd, server,
 									port, MBEDTLS_NET_PROTO_TCP);
 	if (ret_value != 0)
 	{
-		printf("mbedtls_net_connect returned -%x", -ret_value);
+		ESP_LOGE(TAG, "mbedtls_net_connect returned -%x", -ret_value);
 		return ret_value;
 	}
-	printf("Connected.\n");
+	ESP_LOGI(TAG, "Connected.");
 
 	mbedtls_ssl_set_bio(&mbedtls_handler->ssl, &mbedtls_handler->server_fd, 
 						mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
 
-	printf("Performing the SSL/TLS handshake.\n");
+	ESP_LOGI(TAG, "Performing the SSL/TLS handshake.");
 	while ((ret_value = mbedtls_ssl_handshake(&mbedtls_handler->ssl)) != 0)
 	{
 		if (ret_value != MBEDTLS_ERR_SSL_WANT_READ && ret_value != MBEDTLS_ERR_SSL_WANT_WRITE)
 		{
-			printf("mbedtls_ssl_handshake returned -0x%x", -ret_value);
+			ESP_LOGE(TAG, "mbedtls_ssl_handshake returned -0x%x", -ret_value);
 			return ret_value;
 		}
 	}
 
-	printf("Verifying peer X.509 certificate.\n");
+	ESP_LOGI(TAG, "Verifying peer X.509 certificate.");
 	flags = mbedtls_ssl_get_verify_result(&mbedtls_handler->ssl);
 	// we should close the connection if it does not return 0
 	if (flags != 0)
 	{
-		printf("Failed to verify peer certificate.\n");
+		ESP_LOGE(TAG, "Failed to verify peer certificate.");
 		bzero(cert_info, sizeof(cert_info));
 		mbedtls_x509_crt_verify_info(cert_info, sizeof(cert_info), "  ! ", flags);
-		printf("Verification info: %s.\n", cert_info);
+		ESP_LOGE(TAG, "Verification info: %s.", cert_info);
 	}
 	else
 	{
-		printf("Certificate verified.\n");
+		ESP_LOGI(TAG, "Certificate verified.");
 	}
-	printf("Cipher suite is %s.\n", mbedtls_ssl_get_ciphersuite(&mbedtls_handler->ssl));
+	ESP_LOGI(TAG, "Cipher suite is %s.", mbedtls_ssl_get_ciphersuite(&mbedtls_handler->ssl));
 
-	printf("Writing HTTP request.\n");
+	ESP_LOGI(TAG, "Writing HTTP request.");
 	size_t written_bytes = 0;
 	do {
 		ret_value = mbedtls_ssl_write(&mbedtls_handler->ssl,
@@ -147,12 +149,12 @@ int tls_send_http_request(mbedtls_connection_handler_t* mbedtls_handler, const c
 								strlen(http_request) - written_bytes);
 		if (ret_value >= 0) 
 		{
-			// printf("%d bytes written\n", ret_value);
+			// ESP_LOGI(TAG, "%d bytes written.", ret_value);
 			written_bytes += ret_value;
 		} 
 		else if (ret_value != MBEDTLS_ERR_SSL_WANT_WRITE && ret_value != MBEDTLS_ERR_SSL_WANT_READ) 
 		{
-			printf("mbedtls_ssl_write returned -0x%x", -ret_value);
+			ESP_LOGE(TAG, "mbedtls_ssl_write returned -0x%x", -ret_value);
 			return ret_value;
 		}
 	} while(written_bytes < strlen(http_request));
@@ -185,12 +187,12 @@ int tls_receive_http_response(mbedtls_connection_handler_t* mbedtls_handler, cha
 			// expected timeout (not an error)
 			if (ret == MBEDTLS_ERR_SSL_TIMEOUT)
 			{
-				// printf("This is an expected timeout (not an error).\n");
+				// ESP_LOGI(TAG, "This is an expected timeout (not an error).");
 				ret = 0;
 			}
 			else
 			{
-				printf("mbedtls_ssl_read returned -0x%x", -ret);
+				ESP_LOGE(TAG, "mbedtls_ssl_read returned -0x%x", -ret);
 			}
 
 			break;
@@ -198,7 +200,7 @@ int tls_receive_http_response(mbedtls_connection_handler_t* mbedtls_handler, cha
 
 		if(ret == 0)
 		{
-			printf("connection closed");
+			ESP_LOGE(TAG, "connection closed");
 			break;
 		}
 
@@ -236,7 +238,7 @@ void tls_clean_up(mbedtls_connection_handler_t* mbedtls_handler, int error)
 	else
 	{
 		mbedtls_strerror(error, error_buffer, 50);
-		printf("Last error was: -0x%x - %s", -error, error_buffer);
+		ESP_LOGE(TAG, "Last error was: -0x%x - %s", -error, error_buffer);
 	}
 
 	mbedtls_ssl_session_reset(&mbedtls_handler->ssl);

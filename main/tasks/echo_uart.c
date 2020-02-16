@@ -48,7 +48,7 @@ void initialize_uart()
     queue_uart_tx = xQueueCreate(5, sizeof(uint8_t));
     if (queue_uart_tx == NULL)
     {
-        printf("Could not create queue_uart_tx.\n");
+        ESP_LOGE(TAG, "Could not create queue_uart_tx.");
     }
 }
 
@@ -68,14 +68,14 @@ void echo_task(void *pvParameter)
         rcv_len = uart_read_bytes(UART_NUM_0, (uint8_t*)uart_rcv_buffer, 1, 20 / portTICK_RATE_MS);
         if (rcv_len > 0)
         {
-            ESP_LOGI(TAG, "Received from UART: %d\n", *uart_rcv_buffer - '0');
+            ESP_LOGI(TAG, "Received from UART: %d", *uart_rcv_buffer - '0');
 
             // send the received value to the queue (wait 1000ms if the queue is full)
             uart_command.command = *uart_rcv_buffer - '0';
             xStatus = xQueueSendToBack(queue_command_processor_rx, &uart_command, 1000 / portTICK_RATE_MS);
             if (xStatus != pdPASS)
             {
-                printf("Could not send the data to the queue.\n");
+                ESP_LOGE(TAG, "Could not send the data to the queue.");
             }
         }
 
