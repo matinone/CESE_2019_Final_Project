@@ -1,0 +1,49 @@
+Google Cloud tutorial
+1. Create a Cloud Pub/Sub topic (iotlab), the device data from IoT Core is forwarded to a Pub/Sub topic.
+
+2. Modify topic permissions: view permissions -> add member -> new members -> cloud-iot@system.gserviceaccount.com with Pub/Sub > Pub/Sub Publisher role.
+
+3. Create a BigQuery dataset:
+	3.1 BigQuery -> project name -> create dataset (iotlabdataset).
+	3.2 Open dataset -> create table -> source field set to empty table -> destination = sensordata -> in schema section use the add field button to add timestamp (type timestamp), device (type string), temperature (type float) -> default the rest -> create table.
+
+4. Create a cloud storage bucket (to provide a working space for the Cloud Dataflow pipeline) -> Storage -> Create Bucket -> name = project_name-bucket -> default storage class = multi regional -> location = the closest to you -> create.
+
+5. Set up a Cloud Dataflow Pipeline (set up a streaming data pipeline to read sensor data from Pub/Sub and write this out to BigQuery).
+	5.1 Dataflow -> create job from template -> job name = iotlabflow -> cloud dataflow template = Cloud PubSub Topic to BigQuery -> cloud dataflow regional endpoint = us-central1 -> cloud pub/sub input topic = projects/project_id/topics/iotlab -> bigquery output table = project_id:iotlabdataset.sensordata -> temporary location = gs://bucket_name/tmp/ -> optional parameters max workers = 2 and machine type = n1-standard-1.
+
+6. Setup Virtual Machine (run Python scripts to emulate MQTT connected IoT devices).
+	6.1 Computer Engine -> VM Instances -> create it there (iot-device-simulator).
+	6.2 SSH drop-down menu -> open in browser window (does not work so well, there is another option there with command to open it from the Cloud Shell).
+	6.3 In the SSH session -> "sudo apt-get remove google-cloud-sdk -y" to remove the default Google Cloud Platform SDK installation -> "curl https://sdk.cloud.google.com | bash" to install the lateste version -> end and a start a new SSH session.
+	6.4 Run "gcloud init" -> if asked, log in with a new account and accept using personal account -> pick the GCP project to usev -> run "gcloud components update" to make sure that the components of the SDK are up to date -> run "gcloud components install beta" to install the beta components.
+	6.5 Install required packages -> "sudo apt-get update"-> "sudo apt-get install python-pip openssl git -y" -> "pip install pyjwt paho-mqtt cryptography".
+	6.6 Clone repo with scripts -> git clone http://github.com/GoogleCloudPlatform/training-data-analyst
+
+7. Create registry for IoT devices (it can be done from the GUI in the IoT core section, or using the following commands)
+	7.1 export PROJECT_ID=project_name -> export MY_REGION=us-central1
+	7.2 gcloud beta iot registries create iotlab-registry \
+   	    	--project=$PROJECT_ID \
+   		--region=$MY_REGION \
+   		--event-notification-config=topic=projects/$PROJECT_ID/topics/iotlab
+
+8. Create a Cryptographic Keypair (to allow IoT devices to connect securely to Cloud IoT Core).
+	8.1 SSH to the VM instance -> cd $HOME/training-data-analyst/quests/iotlab/ -> " openssl req -x509 -newkey rsa:2048 -keyout rsa_private.pem -nodes -out rsa_cert.pem -subj "/CN=unused" " to create an RSA cryptographic keypair and write to a file rsa_private.pem -> this private key is the one used in the firmware to create the JWT token
+
+9. Add simulated devices to the registry (it can be done from the GUI in the IoT core section, or using the following commands)
+	9.1 SSH to the VM instance -> run command to create a device -> gcloud beta iot devices create sensor_name --project=$PROJECT_ID --region=$MY_REGION --registry=iotlab-registry --public-key path=rsa_cert.pem,type=rs256
+
+10. Run simulated devices
+	10.1 SSH to the VM instance -> download the CA root certificates to the right directory -> cd $HOME/training-data-analyst/quests/iotlab/ -> wget https://pki.google.com/roots.pem
+	10.2 Run simulated device in the background -> python cloudiot_mqtt_example_json.py --project_id=$PROJECT_ID --cloud_region=$MY_REGION --registry_id=iotlab-registry --device_id=sensor_name --private_key_file=rsa_private.pem --message_type=event --algorithm=RS256 > sensor_name-log.txt 2>&1 & -> telemetry data will flow from the simulated devices through Cloud IoT Core to the Cloud Pub/Sub topic, and the Dataflow job will read messages from the Pub/Sub topic and write their contents to the BigQuery table.
+
+11. Analyze the Sensor Data Using BigQuery
+	11.1 Go to BigQuery and anter the following query in the Query editor
+		SELECT timestamp, device, temperature from iotlabdataset.sensordata
+		ORDER BY timestamp DESC
+		LIMIT 100
+
+
+
+
+
