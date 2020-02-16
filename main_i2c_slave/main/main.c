@@ -1,28 +1,19 @@
 #include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
 #include "freertos/task.h"
-#include "freertos/queue.h"
 
 #include "esp_log.h"
 #include "nvs_flash.h"
 
-#include "echo_uart.h"
-#include "i2c_slave.h"
+#include "slave_sim_task.h"
 
-
-// Main application
+// main application
 void app_main()
 {
-
 	// initialize NVS
 	ESP_ERROR_CHECK(nvs_flash_init());
 	
-	initialize_uart();
-	initialize_i2c_slave(I2C_ESP_SLAVE_ADDR);
+	xTaskCreate(&slave_sim_task, "slave_sim_task", 1024 * 2, NULL, 4, NULL);
 
-	// NOTE: 
-	// printf is redirected to the UART and it is thread safe, 
-	// therefore there is no need to use mutexes or any other synchronization method during printf calls
-
-	
+	// vTaskStartScheduler is called in the startup code before app_main is executed
+	// (see start_cpu0 function in ESP-IDF components/esp32/cpu_start.c)
 }

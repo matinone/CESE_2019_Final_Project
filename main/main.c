@@ -54,13 +54,7 @@ void app_main()
 	initialize_wifi(WIFI_FIRST_CONFIG, WIFI_MODE_APSTA, get_current_wifi_credentials());
 	initialize_uart();
 	initialize_command_processor(wifi_module);
-
-	// do not use I2C for now
 	initialize_i2c_master();
-
-	// NOTE: 
-	// printf is redirected to the UART and it is thread safe, 
-	// therefore there is no need to use mutexes or any other synchronization method during printf calls
 
 	// create HTTP/HTTPS/MQTT tasks (depending on the compiler options) with the highest priority
 	#ifdef CONFIG_HTTP
@@ -80,10 +74,10 @@ void app_main()
 	// create the rest of the tasks with priority lower than wifi task
 	xTaskCreate(&command_processor_task, "command_processor_task", 2048, NULL, 5, NULL);
 	xTaskCreate(&echo_task, "echo_task", 1024 * 1.5, NULL, 4, NULL);
-	
-	// do not use I2C for now
+
 	xTaskCreate(&i2c_master_task, "i2c_master_task", 1024 * 2, NULL, 4, NULL);
 	xTaskCreate(&slave_sim_task, "slave_sim_task", 1024 * 2, NULL, 4, NULL);
 
-	// vTaskStartScheduler is called in the startup code before app_main is executed (see start_cpu0 function in ESP-IDF components/esp32/cpu_start.c)
+	// vTaskStartScheduler is called in the startup code before app_main is executed
+	// (see start_cpu0 function in ESP-IDF components/esp32/cpu_start.c)
 }
