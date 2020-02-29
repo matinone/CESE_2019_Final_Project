@@ -43,6 +43,24 @@ Google Cloud tutorial
 		ORDER BY timestamp DESC
 		LIMIT 100
 
+12. Setup Grafana
+	12.1 Go to the marketplace https://console.cloud.google.com/marketplace/details/google/grafana and click configure.
+	12.2 Select zone and create cluster (it takes a while) -> leave default values (or enable stackdriver metrics) -> deploy
+	12.3 Grafana app can be seen in Kubernetes Engine -> Applications
+	12.4 Access the Grafana UI (https://github.com/GoogleCloudPlatform/click-to-deploy/blob/master/k8s/grafana/README.md)
+		12.4.1 Open Google Cloud Shell and set project id -> gcloud config set project PROJECT_ID
+		12.4.2 Configure kubectle command line access
+			gcloud container clusters get-credentials cluster-1 --zone us-central1-a --project PROJECT_ID
+		12.4.3 Expose the Grafana service publicly:
+			* kubectl patch svc "grafana-1-grafana"   --namespace "default"   -p '{"spec": {"type": "LoadBalancer"}}'
+		 	* SERVICE_IP=$(kubectl get svc grafana-1-grafana \
+  --namespace default \
+  --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+			* echo "http://${SERVICE_IP}:3000/" -> access grafana with this URL
+		12.4.4 Log in to Grafana using the credentials shown in the kubernetes app.
+	12.5 Install Big Query datasource plugin -> run command in grafana server -> kubectl exec -it grafana-1-grafana-0 -- /bin/bash -> install plugin -> grafana-cli --pluginUrl https://github.com/doitintl/bigquery-grafana/archive/1.0.6.zip plugins install doitintl-bigquery-datasource -> restart grafana service -> obtain name -> kubectl get pod -n default -> delete grafana service -> kubectl delete pod grafana-1-grafana-0 -> launch again the UI (step 12.4.3).
+	12.6 BigQuery Datasource requires authentication to access BigQuery -> follow instructions (the real steps are similar) in https://doitintl.github.io/bigquery-grafana/ (Using a Google Service Account Key File).
+
 
 
 
