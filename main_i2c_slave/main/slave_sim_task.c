@@ -53,13 +53,15 @@ void slave_sim_task(void *pvParameter)
         // do something about this
     }
 
+    ESP_LOGI(TAG_TASK, "Slave ready.");
+
     while (1)
     {
         // read data from slave buffer
         slave_read_buffer_size = i2c_slave_read_buffer(I2C_SLAVE_NUM, command_frame, COMMAND_FRAME_LENGTH, 100 / portTICK_RATE_MS);
         if (slave_read_buffer_size > 0 && check_frame_format(command_frame))
         {
-            // ESP_LOGI(TAG_TASK, "I2C Slave Sim Task read from slave buffer: %d", command_frame[1]);
+            ESP_LOGI(TAG_TASK, "Slave Task read from slave buffer: %d", command_frame[1]);
             command_data = command_frame[1];
 
             // send back to the master a message indicating that the command was correctly received
