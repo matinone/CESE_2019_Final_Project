@@ -58,6 +58,8 @@
 #define GCLOUD_DEVICE_STATE		"/devices/temp-sensor-buenos-aires/state"
 #define GCLOUD_PROJECT_NAME		"gcloud-training-mati"
 #define GCLOUD_PUBLISH_INTERVAL	30000
+#define GCLOUD_PAYLOAD_JSON		"{\"timestamp\": %ld, \"state\": \"%s\", \"state_int\": %d, \"other\": %d}"
+#define GCLOUD_PAYLOAD_MAX_SIZE	200
 
 
 /* ===== Private structs and enums ===== */
@@ -103,6 +105,7 @@ static const char *TAG_MQTT_EVENT_HANDLER = "MQTTS_EVENT_HANDLER";
 /* ===== Prototypes of private functions ===== */
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event);
 static void obtain_time(void);
+static int32_t get_json_string(char* json_string, time_t timestamp, char* state, int32_t state_int, int32_t other);
 
 
 /* ===== Implementations of public functions ===== */
@@ -267,6 +270,7 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 	uint8_t queue_rcv_value;
 	char* command_string_value;
 	char command_number_string[4];
+	char json_to_send[GCLOUD_PAYLOAD_MAX_SIZE];
 
 	while(1)	
 	{
@@ -293,6 +297,7 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 		{
 			ESP_LOGI(TAG_GCLOUD_TASK, "Could not get Slave State.");
 			queue_rcv_value = 255;
+			command_string_value = "get_error";
 		}
 
 		sprintf(command_number_string, "%d", queue_rcv_value);
@@ -316,8 +321,11 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 		}
 
 		ESP_LOGI(TAG_GCLOUD_TASK, "Publishing to Google Cloud.");
+		get_json_string(json_to_send, current_time, command_string_value, queue_rcv_value, 35);
+		ESP_LOGI(TAG_GCLOUD_TASK, "JSON value = %s", json_to_send);
 
 		msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, command_number_string, 0, 0, 0);
+		// msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, json_to_send, 0, 0, 0);
 		if (msg_id != -1)	
 		{
 			ESP_LOGI(TAG_GCLOUD_TASK, "Sent publish successful.\n");
@@ -458,4 +466,9 @@ static void obtain_time(void)
         time(&now);
         localtime_r(&now, &timeinfo);
     }
+}
+
+static int32_t get_json_string(char* json_string, time_t timestamp, char* state, int32_t state_int, int32_t other)
+{
+	return sprintf(json_string, GCLOUD_PAYLOAD_JSON, timestamp, state, state_int, other);
 }
