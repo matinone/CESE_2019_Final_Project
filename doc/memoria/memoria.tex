@@ -86,15 +86,15 @@ headsepline, % Uncomment to get a line under the header
 %	INFORMACIÓN DE LA MEMORIA
 %----------------------------------------------------------------------------------------
 
-\thesistitle{Título del trabajo} % El títulos de la memoria, se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \ttitle
+\thesistitle{Módulo de conectividad WiFi/Bluetooth para electrodoméstico} % El títulos de la memoria, se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \ttitle
 \degree{Especialista en Sistemas Embebidos } % Nombre del grado, se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \degreename
-\author{Nombre del Autor} % Tu nombre, se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \authorname
-\supervisor{Nombre del Director (pertenencia)} % El nombre del director, se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \supname
-\juradoUNO{Nombre del jurado 1 (pertenencia)} % Nombre y pertenencia del un jurado se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \jur1name
-\juradoDOS{Nombre del jurado 2 (pertenencia)} % Nombre y pertenencia del un jurado se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \jur2name
-\juradoTRES{Nombre del jurado 3 (pertenencia)} % Nombre y pertenencia del un jurado se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \jur3name
-\fechaINICIO{enero de 2016}
-\fechaFINAL{diciembre de 2016}
+\author{Ing. Matías Nicolás Brignone} % Tu nombre, se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \authorname
+\supervisor{Esp. Ing. Diego Fernández (FIUBA)} % El nombre del director, se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \supname
+\juradoUNO{Mg. Ing. Gonzalo Sánchez (FIUBA, FAA)} % Nombre y pertenencia del un jurado se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \jur1name
+\juradoDOS{Esp. Ing. Matías Álvarez (FIUBA)} % Nombre y pertenencia del un jurado se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \jur2name
+\juradoTRES{Esp. Ing. Santiago Germino (FIUBA)} % Nombre y pertenencia del un jurado se usa en la carátula y se puede usar el cualquier lugar del documento con el comando \jur3name
+\fechaINICIO{marzo de 2019}
+\fechaFINAL{abril de 2020}
 
 \subject{Memoria del Trabajo Final de la Carrera de Especialización en Sistemas Embebidos de la UBA} % Your subject area, this is not currently used anywhere in the template, print it elsewhere with \subjectname
 \keywords{Sistemas Embebidos, CESE, FIUBA} % Keywords for your thesis, this is not currently used anywhere in the template, print it elsewhere with \keywordnames
@@ -164,7 +164,7 @@ Jurados:\\
 \jurtresname
  
 \vfill
-\textit{Este trabajo fue realizado en las Ciudad Autónoma de Buenos Aires, entre \fechaINICIOname \hspace{1px} y \fechaFINALname.}
+\textit{Este trabajo fue realizado en la ciudad de Córdoba, entre \fechaINICIOname \hspace{1px} y \fechaFINALname.}
 \end{center}
 \end{titlepage}
 
@@ -179,7 +179,9 @@ Jurados:\\
 %The Thesis Abstract is written here (and usually kept to just this page). The page is kept centered vertically so can expand into the blank space above the title too\ldots
 \centering
 
-El resumen debe escribirse en uno o dos párrafo.  Debe ser breve y conciso sin ningún elemento de formato en el texto como cursiva o negrita. Palabras que no sean del castellano deben ir en itálicas o cursiva. Tampoco se deben usar siglas ni acrónimos que no resulten obvios para un lector promedio de la memoria, ni referencias bibliográficas o notas al pie de página.  No debe faltar qué es lo que se hizo/logró, qué importancia/valor tiene el proyecto/resultado, qué va a encontrar el lector en la memoria y qué contenidos de la Especialización/Maestría se aplicaron en el proyecto.
+En la presente memoria se describe el desarrollo de un módulo que permite dotar de conectividad WiFi y Bluetooth a un electrodoméstico, a los fines de permitir su manejo remoto por parte del usuario final. También permite la recopilación de información de uso y estado por parte del fabricante del electrodoméstico. A los fines de agilizar el desarrollo, el electrodoméstico a controlar se emula utilizando un microcontrolador con el cual se comunica el módulo.
+
+Para desarrollar el trabajo, se utilizó un sistema operativo de tiempo real, diferentes protocolos de comunicación en distintas capas (WiFi/Bluetooth para la capa física, HTTPS/MQTT para la capa de aplicación, entre otros), sistemas de control de versiones y herramientas de gestión de proyectos.
 
 \end{abstract}
 
@@ -191,7 +193,9 @@ El resumen debe escribirse en uno o dos párrafo.  Debe ser breve y conciso sin 
 %\addchaptertocentry{\acknowledgementname} % Descomentando esta línea se puede agregar los agradecimientos al índice
 \vspace{1.5cm}
 
-Esta sección es para agradecimientos personales y es totalmente \textbf{OPCIONAL}.  
+A mi familia, por su constante apoyo.
+
+A mis amigos y colegas, por acompañarme en este camino.
 
 \end{acknowledgements}
 
@@ -211,7 +215,7 @@ Esta sección es para agradecimientos personales y es totalmente \textbf{OPCIONA
 %	CONTENIDO DE LA MEMORIA  - DEDICATORIA
 %----------------------------------------------------------------------------------------
 
-\dedicatory{\textbf{Dedicado a... [OPCIONAL]}}  % escribir acá si se desea una dedicatoria
+\dedicatory{\textbf{Dedicado a mi familia.}}  % escribir acá si se desea una dedicatoria
 
 %----------------------------------------------------------------------------------------
 %	CONTENIDO DE LA MEMORIA  - CAPÍTULOS
