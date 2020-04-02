@@ -143,6 +143,7 @@ Finalmente, se tiene el módulo de comunicación con el electrodoméstico. Esta 
 
 
 \subsection{Comunicación WiFi}
+\label{sec:wifi_com}
 
 Para lograr una comunicación con una página web externa en Internet desde el microcontrolador, es necesario contar con implementaciones de todas las capas del modelo TCP/IP. Para ello, se utilizaron en su mayor parte librerías ya existentes optimizadas para sistemas embebidos, tal como puede observarse en la tabla \ref{tab:implementacion_capas}.
 
@@ -328,6 +329,7 @@ El tipo de dato \emph{command\_type\_t} define los diferentes comandos disponibl
 Para el microcontrolador que emula el comportamiento del electrodoméstico, el cual también es un ESP32, se desarrolló un firmware simplificado con una tarea principal que consiste en una máquina de estados, la cual representa los diferentes estados del electrodoméstico. Los comandos que recibe por su interfaz I2C pueden modificar esta máquina de estados, reflejando así que un determinado proceso inicia o termina. Además, cada vez que recibe un comando desde el módulo principal, le devuelve al mismo una señal de \emph{acknowledge}, la cual es verificada por la tarea de procesamiento de comandos cada vez que se produce una comunicación con el electrodoméstico.
 
 \section{Integración con Google Cloud Platform}
+\label{sec:google_cloud}
 
 Como se mencionó en la sección \ref{plataforma_nube}, para proporcionarle información al fabricante acerca del estado del electrodoméstico se utiliza Google Cloud Platform. Esta implementación tiene dos facetas: por un lado la tarea a nivel de firmware que permite que el microcontrolador se comunique con Google Cloud, y por el otro toda la infraestructura y los servicios utilizados en Google Cloud.
 
@@ -379,4 +381,23 @@ Luego el firmware debe utilizar la clave que tiene almacenada para generar un JS
 \end{figure}
 
 \footnotetext{Imagen extraída de \url{https://cloud.google.com/iot/docs/concepts/device-securityprovisioning_credentials}.}
+
+La generación del JWT tiene la complejidad adicional de que es necesario conocer la fecha y hora actual, ya que son parte de los campos que se deben enviar para autenticarse y para configurar una fecha de expiración para el \emph{token}. Debido a que el dispositivo ya se encuentra conectado a Internet, para determinar la hora actual se recurre al Protocolo Simple de Hora de Red (SNTP por sus siglas en inglés correspondientes a \emph{Simple Network Time Protocol}), el cual permite que un cliente obtenga información horaria desde un servidor de tiempo concreto. En este caso se utilizó \url{pool.ntp.org} como servidor horario, debido a que es un proyecto gratuito muy utilizado a nivel mundial y con servidores distribuidos globalmente. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
