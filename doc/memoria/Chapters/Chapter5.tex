@@ -1,8 +1,38 @@
 \chapter{Conclusiones}
 
+En este capítulo se mencionan los aspectos más importantes del trabajo realizado y se contemplan los próximos pasos a seguir en el desarrollo.
 
 \section{Conclusiones generales }
 
+En este trabajo se logró implementar de manera exitosa un módulo capaz de dotar de conectividad WiFi y Bluetooth a un electrodoméstico. Para ello se diseñaron e implementaron diferentes módulos de firmware que permiten comunicarse con el usuario mediante la recepción de comandos por WiFi/Bluetooth, los cuales luego son retransmitidos al electrodoméstico (emulado por otro microcontrolador). También permiten que el fabricante cuente con información de estado en tiempo real de sus electrodomésticos, a través del envío y procesamiento de datos en Google Cloud Platform.
+
+Durante el desarrollo del trabajo, fueron indispensables los conocimientos adquiridos en las diferentes materias de la Carrera de Especialización en Sistemas Embebidos, entre las que se destacan las siguientes:
+
+\begin{itemize}
+	\item Sistemas operativos de tiempo real I y II: constituyeron el primer contacto con un RTOS y permitieron aprender acerca del uso de tareas, recursos de sincronización y comunicación entre ellas, y uso de memoria en el contexto de un RTOS. 
+	\item Protocolos de comunicación en sistemas embebidos: la interfaces de comunicación vistas (WiFi, Bluetooth, I2C) fueron una parte integral del trabajo realizado, al igual que otros protocolos de nivel superior (como HTTP para la capa de aplicación).
+	\item Ingeniería de software en sistemas embebidos: permitió adquirir buenas prácticas de desarrollo de software, y elaborar el diseño de algunos módulos de firmware en una etapa temprana del trabajo.
+\end{itemize}
+
 \section{Próximos pasos}
+
+El próximo paso lógico para el trabajo realizado consiste en la integración del módulo a un electrodoméstico real, para demostrar así el valor que aporta en un entorno más realista. Esto implicaría también el diseño y fabricación de un circuito impreso que se adapte al electrodoméstico seleccionado.
+
+Además, existen una serie de funcionalidades adicionales que sería deseable implementar a futuro, a los fines de contar con un desarrollo aún más completo. Algunas de estas funcionalidades se presentan a continuación:
+
+\begin{itemize}
+	\item Agregar soporte para más interfaces de comunicación con el electrodoméstico: las pruebas se realizaron sólo con I2C, por lo que sería deseable agregar al menos SPI y UART, e incluso evaluar otros protocolos adicionales.
+	\item Mejorar servidor web: algunas funcionalidades que se le podrían incorporar son la capacidad de mostrar las redes WiFi disponibles y el uso de encriptación para proteger la información que se intercambia al configurar las credenciales.
+	\item Realizar actualizaciones remotas: conocidas como actualizaciones OTA (\emph{over the air}), permitirían que el fabricante actualice el firmware de todos sus electrodomésticos conectados de manera remota. El \emph{framework} del microcontrolador utilizado tiene soporte para recibir estas actualizaciones, y Google Cloud permite enviarlas, por lo que sería factible implementarlo.  
+\end{itemize}
+
+
+
+
+
+
+
+
+
 
 

@@ -80,11 +80,87 @@ Una vez conectado al \emph{broker}, se enviaron algunos mensajes y luego se revi
 
 \subsubsection{Servidor web}
 
+Para probar el funcionamiento del servidor web, es necesario conectarse a la red local que el propio módulo genera, cuyo nombre es ESP32\_AP. Una vez conectado, es posible acceder al servidor ingresando a una dirección IP específica desde cualquier navegador.
+
+La interfaz del servidor web es sumamente sencilla, y solamente consiste en un formulario para ingresar las credenciales de la red WiFi a la cual se desea conectar, tal como se observa en la figura \ref{fig:web_server_interface}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.5]{./Figures/web_server_interface.png}
+\caption{Interfaz del servidor web que se ejecuta en el módulo.}
+\label{fig:web_server_interface}
+\end{figure}
+
+Desde el punto de vista del firmware, en la figura \ref{fig:output_web_server} se observan los diferentes eventos que ocurrieron al conectarse a la red local del módulo funcionando como punto de acceso.
+
+Primero se detectó la conexión de un nuevo cliente (\emph{station}) al punto de acceso. Debido a que el objetivo del servidor web es permitir configurar o modificar las credenciales WiFi, se observa cómo el módulo se desconectó en ese momento de la red WiFi a la que se encontraba conectado. Luego el servidor web detectó que se envió el formulario, mostrando por consola las credenciales de la red ingresada. Finalmente el firmware desconectó automáticamente al cliente que estaba en el servidor web y procedió a conectarse a la nueva red.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{./Figures/output_web_server.png}
+\caption{Salida por consola del microcontrolador durante la configuración de las credenciales de la red WiFi.}
+\label{fig:output_web_server}
+\end{figure}
+
 \subsection{Comunicación BLE}
 
-\subsection{Comunicación serie con electrodoméstico}
+Para probar el funcionamiento de la comunicación por Bluetooth Low Energy, se utilizó en un celular la aplicación \emph{nRF Connect}, que ofrece un poderoso conjunto de herramientas para comunicarse con dispositivos BLE. Entre ellas se encuentra la posibilidad de descubrir servicios/características, y realizar operaciones de lectura/escritura sobre ellas.
+
+Al iniciar el módulo, el WiFi se encuentra encendido por defecto, y por lo tanto el BLE está apagado, ya que ambos no pueden coexistir en simultáneo. Por ello como primera prueba se envió un comando para encender el BLE, para verificar que el WiFi se desactiva automáticamente y el proceso de BLE se inicializa correctamente. En la figura \ref{fig:ble_init} se observa cómo se inicia el controlador Bluetooth y luego se disparan cuatro eventos asociados al servidor BLE (como se explicó en la sección \ref{sec:ble_com}). Estos eventos indican que se registró la aplicación, que se creó e inició un servicio, y que se agregó una característica a dicho servicio.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{./Figures/ble_init.png}
+\caption{Inicialización de la interfaz BLE en el módulo.}
+\label{fig:ble_init}
+\end{figure}
+
+Una vez inicializada la comunicación BLE, es posible descubrir el módulo utilizando la aplicación \emph{nRF Connect}, como se observa en la figura \ref{fig:nrf_discover_esp32}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.16]{./Figures/nrf_discover_esp32.png}
+\caption{Servidor BLE del módulo visible en la aplicación móvil nRF Connect.}
+\label{fig:nrf_discover_esp32}
+\end{figure}
+
+Al establecer una conexión con el módulo desde la aplicación, se puede acceder a sus servicios y características. Esto queda en evidencia en la figura \ref{fig:nrf_char_esp32}, en la que se ve el servicio con su correspondiente característica, los cuales fueron previamente configurados en el firmware del módulo. Ambos figuran como \emph{unknown} debido a que los identificadores no se corresponden con ningún valor predefinido por el \emph{Bluetooth Special Interest Group}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.20]{./Figures/nrf_char_esp32.png}
+\caption{Servicio con su correspondiente característica, vistos en la aplicación móvil nRF Connect.}
+\label{fig:nrf_char_esp32}
+\end{figure}
+
+Los símbolos de flecha ubicados a la derecha de la característica permiten leer o escribir un valor, disparando así en el firmware los eventos correspondientes (figura \ref{fig:output_ble_event}, con tres operaciones de lectura y una de escritura).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{./Figures/output_ble_event.png}
+\caption{Eventos disparados en el firmware ante operaciones de lectura y escritura de una característica BLE.}
+\label{fig:output_ble_event}
+\end{figure}
+
+
+\subsection{Comunicación con electrodoméstico}
+
+Para probar la comunicación serie por I2C con el electrodoméstico, emulado por otro microcontrolador ESP32, se conectaron las respectivas interfaces I2C como se muestra en la figura \ref{fig:esp32_connection}. Adicionalmente se interconectaron los terminales de masa de ambos microcontroladores.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=1.0]{./Figures/esp32_connection.pdf}
+\caption{Conexión de las interfaces I2C de los microcontroladores.}
+\label{fig:esp32_connection}
+\end{figure}
+
+También fue necesario ejecutar un firmware más sencillo en el microcontrolador auxiliar, con una tarea principal que periódicamente lee la información que llega por I2C y en función de ello actualiza una máquina de estados, la cual representa el estado en el que se encuentra el electrodoméstico en un momento dado.
+
+De esta forma fue posible verificar el funcionamiento de la comunicación serie, al enviar un comando desde el módulo principal hacia el microcontrolador que emula el electrodoméstico, y comprobando que se reciben correctamente.
 
 \section{Integración del sistema}
+
+Para probar el funcionamiento general del sistema, todas las tareas asociadas a los diferentes módulos de firmware deben estar ejecutándose en simultáneo. Esto permite verificar el flujo completo, desde el envío de un comando por parte del usuario (usando la plataforma web) hasta la ejecución de la acción correspondiente en el electrodoméstico (emulado por otro microcontrolador).
 
 \subsection{Visualización de datos en Google Cloud Platform}
 

@@ -239,6 +239,7 @@ De forma similar al \emph{driver} WiFi, se implementó un \emph{event handler} q
 
 
 \subsection{Comunicación BLE}
+\label{sec:ble_com}
 
 Un dispositivo BLE puede actuar como \emph{peripheral} (periférico o servidor) o como \emph{central} (principal o cliente), y en el caso de este trabajo el microcontrolador actúa como un \emph{peripheral}. El servidor anuncia continuamente su presencia, enviando paquetes para que otros dispositivos detecten su presencia. Por su parte, el dispositivo \emph{central}, que en este caso sería la aplicación en el celular del usuario del electrodoméstico, realiza un escaneo en busca de dispositivos cercanos. Una vez que encuentra el \emph{peripheral} deseado, establece una conexión y le realiza diferentes peticiones.
 
@@ -378,7 +379,7 @@ Luego el firmware debe utilizar la clave que tiene almacenada para generar un JS
 
 \footnotetext{Imagen extraída de \url{https://cloud.google.com/iot/docs/concepts/device-securityprovisioning_credentials}.}
 
-La generación del JWT tiene la complejidad adicional de que es necesario conocer la fecha y hora actual, ya que son parte de los campos que se deben enviar para autenticarse y para configurar una fecha de expiración para el \emph{token}. Debido a que el dispositivo ya se encuentra conectado a Internet, para determinar la hora actual se recurre al Protocolo Simple de Hora de Red (SNTP por sus siglas en inglés correspondientes a \emph{Simple Network Time Protocol}), el cual permite que un cliente obtenga información horaria desde un servidor de tiempo concreto. En este caso se utilizó \url{pool.ntp.org} como servidor horario, debido a que es un proyecto gratuito muy utilizado a nivel mundial y con servidores distribuidos globalmente. 
+La generación del JWT tiene la complejidad adicional de que es necesario conocer la fecha y hora actual, ya que son parte de los campos que se deben enviar para autenticarse y para configurar una fecha de expiración para el \emph{token}. Debido a que el dispositivo ya cuenta con conexión a Internet, para determinar la hora actual se recurrió al Protocolo Simple de Hora de Red (SNTP, por sus siglas en inglés correspondientes a \emph{Simple Network Time Protocol}), el cual permite que un cliente obtenga información horaria desde un servidor de tiempo concreto. En este caso se utilizó \url{pool.ntp.org} como servidor horario, debido a que es un proyecto gratuito muy utilizado a nivel mundial y con servidores distribuidos globalmente. 
 
 
 
