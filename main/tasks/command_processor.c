@@ -76,7 +76,7 @@ void command_processor_task(void *pvParameter)
         xStatus = xQueueReceive(queue_command_processor_rx, &current_command,  portMAX_DELAY);
         if (xStatus == pdPASS) 
         {
-            ESP_LOGI(TAG, "Received command %s from %s.\n", translate_command_type(current_command.command),
+            ESP_LOGI(TAG, "Received command %s from %s.", translate_command_type(current_command.command),
                                                      translate_rx_module(current_command.rx_id));
 
             switch(current_command.command)
@@ -332,11 +332,11 @@ BaseType_t wait_for_slave_cmd_ack(rx_command_t* command)
     xStatus = xQueueReceive(queue_command_processor_rx, command,  2000 / portTICK_RATE_MS);
     if (xStatus == pdPASS && command->rx_id == I2C_MASTER_MOD && command->command == CMD_SLAVE_OK)
     {
-        ESP_LOGI(TAG, "Command successfully sent to Slave\n");
+        ESP_LOGI(TAG, "Command successfully sent to Slave.");
     }
     else
     {
-        ESP_LOGI(TAG, "Command could not be sent to Slave (%d)\n", command->command);
+        ESP_LOGE(TAG, "Command could not be sent to Slave (%d).", command->command);
     }
 
     return xStatus;

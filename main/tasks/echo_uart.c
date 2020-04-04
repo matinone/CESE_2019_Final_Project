@@ -81,9 +81,9 @@ void echo_task(void *pvParameter)
 
         // read data from the tx queue
         xStatus = xQueueReceive(queue_uart_tx, &command_type, 100 / portTICK_RATE_MS);
-        if (xStatus == pdPASS) 
+        if (xStatus == pdPASS && command_type < 50) 
         {
-            ESP_LOGI(TAG, "Received from Command Processor: %d\n", command_type);
+            ESP_LOGI(TAG, "Received from Command Processor: %d", command_type);
         }
 
         vTaskDelay(UART_RX_CHECK_TIME_MS / portTICK_RATE_MS);

@@ -84,6 +84,7 @@ void slave_sim_task(void *pvParameter)
         // report the current status of the slave FSM
         if(command_data == CMD_SLAVE_STATUS)
         {
+            ESP_LOGI(TAG_TASK, "Sending current slave state to master: %d.", slave_state);
             sent_frame[1] = slave_state;
             sent_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, sent_frame, COMMAND_FRAME_LENGTH, 500 / portTICK_RATE_MS);
             if (sent_size == 0)

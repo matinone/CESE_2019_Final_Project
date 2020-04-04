@@ -160,6 +160,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 	case SYSTEM_EVENT_STA_GOT_IP:
 		connect_retry_num = 0;
 		xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+		ESP_LOGI(TAG, "WiFi connection successful.");
 		break;
 	
 	case SYSTEM_EVENT_STA_DISCONNECTED:
