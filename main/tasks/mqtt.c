@@ -357,14 +357,14 @@ void start_custom_mqtt_client()
 	// wait for wifi connection (max 10 seconds)
 	// xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, 10000 / portTICK_RATE_MS);
 	esp_mqtt_client_start(client_adafruit);
-	// esp_mqtt_client_start(client_gcloud);
+	esp_mqtt_client_start(client_gcloud);
 }
 
 
 void stop_custom_mqtt_client()
 {
 	esp_mqtt_client_stop(client_adafruit);
-	// esp_mqtt_client_stop(client_gcloud);
+	esp_mqtt_client_stop(client_gcloud);
 }
 
 
