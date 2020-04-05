@@ -49,16 +49,18 @@
 	#endif
 #endif
 
+#define DEVICE_ID				"esp32_real"
 #define DEVICE_BSAS_KEY_START	"_binary_device_bsas_key_pem_start"
 #define DEVICE_BSAS_KEY_END   	"_binary_device_bsas_key_pem_end"
 #define GCLOUD_KEY_START    	"_binary_gcloud_cert_pem_start"
 #define GCLOUD_MQTT_URI			"mqtts://mqtt.2030.ltsapis.goog:8883"
-#define GCLOUD_CLIENT_ID		"projects/gcloud-training-mati/locations/us-central1/registries/iotlab-registry/devices/temp-sensor-buenos-aires"
-#define GCLOUD_DEVICE_TOPIC		"/devices/temp-sensor-buenos-aires/events"
-#define GCLOUD_DEVICE_STATE		"/devices/temp-sensor-buenos-aires/state"
-#define GCLOUD_PROJECT_NAME		"gcloud-training-mati"
+#define GCLOUD_CLIENT_ID		"projects/esp32-cese/locations/us-central1/registries/esp32_registry/devices/esp32_real"
+#define GCLOUD_DEVICE_TOPIC		"/devices/esp32_real/events"
+#define GCLOUD_DEVICE_STATE		"/devices/esp32_real/state"
+#define GCLOUD_PROJECT_NAME		"esp32-cese"
 #define GCLOUD_PUBLISH_INTERVAL	30000
-#define GCLOUD_PAYLOAD_JSON		"{\"timestamp\": %ld, \"state\": \"%s\", \"state_int\": %d, \"other\": %d}"
+// #define GCLOUD_PAYLOAD_JSON		"{\"timestamp\": %ld, \"state\": \"%s\", \"state_int\": %d, \"other\": %d}"
+#define GCLOUD_PAYLOAD_JSON		"{\"timestamp\": %ld, \"device\": \"%s\", \"state\": \"%s\", \"state_int\": %d, \"temp\": %d}"
 #define GCLOUD_PAYLOAD_MAX_SIZE	200
 
 
@@ -105,7 +107,7 @@ static const char *TAG_MQTT_EVENT_HANDLER = "MQTTS_EVENT_HANDLER";
 /* ===== Prototypes of private functions ===== */
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event);
 static void obtain_time(void);
-static int32_t get_json_string(char* json_string, time_t timestamp, char* state, int32_t state_int, int32_t other);
+static int32_t get_json_string(char* json_string, time_t timestamp, char* state, int32_t state_int, int32_t temp);
 
 
 /* ===== Implementations of public functions ===== */
@@ -271,6 +273,8 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 	char* command_string_value;
 	char command_number_string[4];
 	char json_to_send[GCLOUD_PAYLOAD_MAX_SIZE];
+	uint32_t current_temp = 25;
+
 
 	while(1)	
 	{
@@ -321,11 +325,19 @@ void mqtt_gcloud_publish_task(void *pvParameter)
 		}
 
 		ESP_LOGI(TAG_GCLOUD_TASK, "Publishing to Google Cloud.");
-		get_json_string(json_to_send, current_time, command_string_value, queue_rcv_value, 35);
+		get_json_string(json_to_send, current_time, command_string_value, queue_rcv_value, current_temp);
 		ESP_LOGI(TAG_GCLOUD_TASK, "JSON value = %s", json_to_send);
 
-		msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, command_number_string, 0, 0, 0);
-		// msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, json_to_send, 0, 0, 0);
+		if (current_time & 1)	{
+			current_temp = current_temp + 2;
+		}
+		else	{
+			current_temp = current_temp - 1;
+		}
+
+
+		// msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, command_number_string, 0, 0, 0);
+		msg_id = esp_mqtt_client_publish(client_gcloud, GCLOUD_DEVICE_TOPIC, json_to_send, 0, 0, 0);
 		if (msg_id != -1)	
 		{
 			ESP_LOGI(TAG_GCLOUD_TASK, "Sent publish successful.\n");
@@ -345,14 +357,14 @@ void start_custom_mqtt_client()
 	// wait for wifi connection (max 10 seconds)
 	// xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, 10000 / portTICK_RATE_MS);
 	esp_mqtt_client_start(client_adafruit);
-	esp_mqtt_client_start(client_gcloud);
+	// esp_mqtt_client_start(client_gcloud);
 }
 
 
 void stop_custom_mqtt_client()
 {
 	esp_mqtt_client_stop(client_adafruit);
-	esp_mqtt_client_stop(client_gcloud);
+	// esp_mqtt_client_stop(client_gcloud);
 }
 
 
@@ -468,7 +480,7 @@ static void obtain_time(void)
     }
 }
 
-static int32_t get_json_string(char* json_string, time_t timestamp, char* state, int32_t state_int, int32_t other)
+static int32_t get_json_string(char* json_string, time_t timestamp, char* state, int32_t state_int, int32_t temp)
 {
-	return sprintf(json_string, GCLOUD_PAYLOAD_JSON, timestamp, state, state_int, other);
+	return sprintf(json_string, GCLOUD_PAYLOAD_JSON, timestamp, DEVICE_ID, state, state_int, temp);
 }
