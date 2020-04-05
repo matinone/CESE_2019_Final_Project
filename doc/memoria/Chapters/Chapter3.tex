@@ -267,7 +267,7 @@ En cuanto a la forma de transmitir datos, el intercambio de información entre d
 \label{fig:gatt}
 \end{figure}
 
-\footnotetext{Imagen extraída de \url{https://learn.adafruit.com/introduction-to-bluetooth-low-energy/gatt}.}
+\footnotetext{ Imagen extraída de \url{https://learn.adafruit.com/introduction-to-bluetooth-low-energy/gatt}.}
 
 Un cliente puede llevar a cabo diferentes operaciones sobre una característica de un \emph{peripheral}, que incluyen operaciones de lectura y escritura. Esto justamente es lo que se utilizó para enviar comandos por BLE (se escribe una característica en particular) y para recibir respuestas (se lee una característica).
 
@@ -365,7 +365,7 @@ También se debe autenticar el dispositivo en particular, es decir que el microc
 \label{fig:device_key}
 \end{figure}
 
-\footnotetext{Imagen extraída de \url{https://cloud.google.com/iot/docs/concepts/device-securityprovisioning_credentials}.}
+\footnotetext{ Imagen extraída de \url{https://cloud.google.com/iot/docs/concepts/device-security\#provisioning_credentials}.}
 
 
 Luego el firmware debe utilizar la clave que tiene almacenada para generar un JSON Web Token (JWT) \citep{jwt} y enviarlo al momento de conectarse por MQTT, como se observa en la figura \ref{fig:device_key}.
@@ -377,7 +377,7 @@ Luego el firmware debe utilizar la clave que tiene almacenada para generar un JS
 \label{fig:device_jwt}
 \end{figure}
 
-\footnotetext{Imagen extraída de \url{https://cloud.google.com/iot/docs/concepts/device-securityprovisioning_credentials}.}
+\footnotetext{ Imagen extraída de \url{https://cloud.google.com/iot/docs/concepts/device-security\#provisioning_credentials}.}
 
 La generación del JWT tiene la complejidad adicional de que es necesario conocer la fecha y hora actual, ya que son parte de los campos que se deben enviar para autenticarse y para configurar una fecha de expiración para el \emph{token}. Debido a que el dispositivo ya cuenta con conexión a Internet, para determinar la hora actual se recurrió al Protocolo Simple de Hora de Red (SNTP, por sus siglas en inglés correspondientes a \emph{Simple Network Time Protocol}), el cual permite que un cliente obtenga información horaria desde un servidor de tiempo concreto. En este caso se utilizó \url{pool.ntp.org} como servidor horario, debido a que es un proyecto gratuito muy utilizado a nivel mundial y con servidores distribuidos globalmente. 
 

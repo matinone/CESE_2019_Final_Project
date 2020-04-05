@@ -1,11 +1,11 @@
 Google Cloud tutorial
 1. Create a Cloud Pub/Sub topic (iotlab), the device data from IoT Core is forwarded to a Pub/Sub topic.
 
-2. Modify topic permissions: view permissions -> add member -> new members -> cloud-iot@system.gserviceaccount.com with Pub/Sub > Pub/Sub Publisher role.
+2. Modify topic permissions: view permissions (info panel) -> add member -> new members -> cloud-iot@system.gserviceaccount.com with Pub/Sub > Pub/Sub Publisher role.
 
 3. Create a BigQuery dataset:
 	3.1 BigQuery -> project name -> create dataset (iotlabdataset).
-	3.2 Open dataset -> create table -> source field set to empty table -> destination = sensordata -> in schema section use the add field button to add timestamp (type timestamp), device (type string), temperature (type float) -> default the rest -> create table.
+	3.2 Open dataset -> create table -> source field set to empty table -> destination = sensordata (table name) -> in schema section use the add field button to add timestamp (type timestamp), device (type string), temperature (type float) -> default the rest -> create table.
 
 4. Create a cloud storage bucket (to provide a working space for the Cloud Dataflow pipeline) -> Storage -> Create Bucket -> name = project_name-bucket -> default storage class = multi regional -> location = the closest to you -> create.
 
@@ -61,7 +61,17 @@ Google Cloud tutorial
 	12.5 Install Big Query datasource plugin -> run command in grafana server -> kubectl exec -it grafana-1-grafana-0 -- /bin/bash -> install plugin -> grafana-cli --pluginUrl https://github.com/doitintl/bigquery-grafana/archive/1.0.6.zip plugins install doitintl-bigquery-datasource -> restart grafana service -> obtain name -> kubectl get pod -n default -> delete grafana service -> kubectl delete pod grafana-1-grafana-0 -> launch again the UI (step 12.4.3).
 	12.6 BigQuery Datasource requires authentication to access BigQuery -> follow instructions (the real steps are similar) in https://doitintl.github.io/bigquery-grafana/ (Using a Google Service Account Key File).
 
+********************************************
+kubectl patch svc "grafana-1-grafana" \
+  --namespace "default" \
+  -p '{"spec": {"type": "LoadBalancer"}}'
 
 
+SERVICE_IP=$(kubectl get svc grafana-1-grafana \
+  --namespace default \
+  --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+
+echo "http://${SERVICE_IP}:3000/"
 
 
