@@ -11,9 +11,11 @@
 #define __SLAVE_SIM_TASK_H__
 
 /* ===== Dependencies ===== */
-#include "driver/i2c.h"
+
 
 /* ===== Macros of public constants ===== */
+#define GPIO_OUTPUT_0			4
+
 
 /* ===== Public structs and enums ===== */
 typedef enum {

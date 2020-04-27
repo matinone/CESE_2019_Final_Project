@@ -15,12 +15,16 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
 
+#include "driver/i2c.h"
+#include "driver/gpio.h"
+
 /* ===== Macros of private constants ===== */
 #define I2C_SLAVE_NUM           I2C_NUM_0
 #define I2C_SLAVE_TX_BUF_LEN    512
 #define I2C_SLAVE_RX_BUF_LEN    512
 #define SLAVE_PROCESS_A_TIME    30
-#define SLAVE_PROCESS_B_TIME    15
+
+#define GPIO_OUTPUT_PIN_SEL 	((1ULL<<GPIO_OUTPUT_0) | (1ULL<<GPIO_OUTPUT_0))
 
 /* ===== Declaration of private or external variables ===== */
 static const char *TAG_TASK = "I2C_SLAVE_SIM_TASK";
@@ -53,6 +57,15 @@ void slave_sim_task(void *pvParameter)
         ESP_LOGE(TAG_TASK, "Error initializing I2C slave.");
         // do something about this
     }
+
+    // configure GPIO
+	gpio_config_t output_gpio_config;
+    output_gpio_config.intr_type = GPIO_PIN_INTR_DISABLE;       // disable interrupt
+    output_gpio_config.mode = GPIO_MODE_OUTPUT;                 // output mode
+    output_gpio_config.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;      // bit mask with the GPIOs to set
+    output_gpio_config.pull_down_en = 0;                        // disable pull-down mode
+    output_gpio_config.pull_up_en = 0;                          // disable pull-up mode
+    gpio_config(&output_gpio_config);                           // configure GPIO with the given settings
 
     while (1)
     {
@@ -142,6 +155,8 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
     static slave_machine_state_t paused_state   = SLAVE_IDLE;
     uint8_t command_frame[COMMAND_FRAME_LENGTH] = {COMMAND_FRAME_START, 0, COMMAND_FRAME_END};
     size_t sent_size;
+    static uint32_t toggle_counter  = 0;
+    static uint8_t toggler_var      = 0;
 
     switch (current_state)
     {
@@ -164,12 +179,15 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
         if(state_time_counter == 0)
         {
             ESP_LOGI(TAG_FSM, "Entered into SLAVE_PROCESS_A.");
+            gpio_set_level(GPIO_OUTPUT_0, 1);   // turn on the relay
         }
         state_time_counter++;
         if(state_time_counter == SLAVE_PROCESS_A_TIME)
         {
             ESP_LOGI(TAG_FSM, "Slave PROCESS_A finished, switching to SLAVE_DONE.");
             current_state = SLAVE_DONE;
+
+            gpio_set_level(GPIO_OUTPUT_0, 0);   // turn off the relay
 
             // notify master that the process finished
             command_frame[1] = CMD_SLAVE_START_A;
@@ -196,12 +214,23 @@ slave_machine_state_t update_slave_sim_fsm(slave_machine_state_t current_state, 
         if(state_time_counter == 0)
         {
             ESP_LOGI(TAG_FSM, "Entered into SLAVE_PROCESS_B.");
+            toggle_counter = 0;
+            toggler_var = 0;
         }
+
+        if (toggle_counter % 25 == 0)   {
+            gpio_set_level(GPIO_OUTPUT_0, toggler_var % 2);
+            toggler_var++;  
+        }
+        toggle_counter++;
+
         state_time_counter++;
         if(current_cmd == CMD_SLAVE_START_B)
         {
             ESP_LOGI(TAG_FSM, "Finishing Slave PROCESS_B, switching to SLAVE_DONE.");
             current_state = SLAVE_DONE;
+
+            gpio_set_level(GPIO_OUTPUT_0, 0);
 
             // notify master that the process finished
             command_frame[1] = CMD_SLAVE_START_B;
